@@ -1,4 +1,4 @@
-name: Build Windows EXE
+name: Build & Test Windows EXE
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Python
@@ -23,6 +23,14 @@ jobs:
       - name: Build EXE
         run: |
           pyinstaller --onefile --noconsole run.py
+
+      # 🔥 TEST CZY APLIKACJA DZIAŁA
+      - name: Run EXE and test server
+        shell: powershell
+        run: |
+          Start-Process dist/run.exe
+          Start-Sleep -Seconds 6
+          Invoke-WebRequest http://127.0.0.1:8000 -UseBasicParsing
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

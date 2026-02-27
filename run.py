@@ -58,7 +58,7 @@ def show_window():
     title.pack(pady=10)
 
     status_var = tk.StringVar(value="Uruchamianie…")
-    status = tk.Label(root, textvariable=status_var, font=("Segoe UI", 11))
+    status = tk.Label(root, textvariable=status_var, font=("Segoe UI", 12))
     status.pack(pady=5)
 
     def set_status(text):
