@@ -17,18 +17,18 @@ jobs:
       - run: pip install fastapi uvicorn pyinstaller
 
       - name: Build EXE
+        shell: powershell
         run: |
-          pyinstaller run.py ^
-            --name run ^
-            --onefile ^
-            --windowed ^
-            --hidden-import=anyio._backends._asyncio ^
-            --hidden-import=anyio._backends._trio ^
-            --collect-all anyio ^
-            --collect-all fastapi ^
-            --collect-all uvicorn ^
+          pyinstaller run.py `
+            --name run `
+            --onefile `
+            --windowed `
+            --hidden-import=anyio._backends._asyncio `
+            --hidden-import=anyio._backends._trio `
+            --collect-all anyio `
+            --collect-all fastapi `
+            --collect-all uvicorn `
             --collect-all starlette
-
       - name: Test app start
         shell: powershell
         run: |
