@@ -15,7 +15,13 @@ server_ready = False
 
 def start_server():
     global server
-    config = uvicorn.Config(app, host=HOST, port=PORT, log_config=None)
+    config = uvicorn.Config(
+        app,
+        host=HOST,
+        port=PORT,
+        log_config=None,
+        loop="asyncio"
+    )
     server = uvicorn.Server(config)
     server.run()
 

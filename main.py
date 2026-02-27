@@ -28,6 +28,11 @@ current_id = 1
 # -------------------
 # API
 # -------------------
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/api/employees", response_model=List[EmployeeResponse])
 def get_employees():
     return employees

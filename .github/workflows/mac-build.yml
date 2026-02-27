@@ -1,47 +1,41 @@
-name: Build & Test macOS App
+name: Build macOS
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
+  build:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - run: pip install fastapi uvicorn pyinstaller
+
+      - name: Build APP
         run: |
-          pip install fastapi uvicorn py2app
+          pyinstaller run.py \
+            --name run \
+            --windowed \
+            --hidden-import=anyio._backends._asyncio \
+            --hidden-import=anyio._backends._trio \
+            --collect-all anyio \
+            --collect-all fastapi \
+            --collect-all uvicorn \
+            --collect-all starlette
 
-      - name: Create setup.py
-        run: |
-          echo "from setuptools import setup" >> setup.py
-          echo "APP = ['run.py']" >> setup.py
-          echo "OPTIONS = {'argv_emulation': True, 'packages': ['uvicorn','fastapi'], 'includes': ['tkinter']}" >> setup.py
-          echo "setup(app=APP, options={'py2app': OPTIONS}, setup_requires=['py2app'])" >> setup.py
-
-      - name: Build app
-        run: python setup.py py2app
-
-      - name: Run app and test server
+      - name: Test app start
         run: |
           chmod +x dist/run.app/Contents/MacOS/run
           dist/run.app/Contents/MacOS/run &
           sleep 6
-          curl -f http://127.0.0.1:8000
+          curl -f http://127.0.0.1:8000/health
 
-      - name: Codesign (local trust)
-        run: codesign --deep --force --sign - dist/run.app
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: macOS-App
+          name: macos-app
           path: dist/run.app

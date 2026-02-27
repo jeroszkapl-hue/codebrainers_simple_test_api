@@ -1,39 +1,42 @@
-name: Build & Test Windows EXE
+name: Build Windows
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          pip install fastapi uvicorn pyinstaller
+      - run: pip install fastapi uvicorn pyinstaller
 
       - name: Build EXE
         run: |
-          pyinstaller --onefile --noconsole run.py
+          pyinstaller run.py ^
+            --name run ^
+            --onefile ^
+            --windowed ^
+            --hidden-import=anyio._backends._asyncio ^
+            --hidden-import=anyio._backends._trio ^
+            --collect-all anyio ^
+            --collect-all fastapi ^
+            --collect-all uvicorn ^
+            --collect-all starlette
 
-      # 🔥 TEST CZY APLIKACJA DZIAŁA
-      - name: Run EXE and test server
+      - name: Test app start
         shell: powershell
         run: |
           Start-Process dist/run.exe
           Start-Sleep -Seconds 6
-          Invoke-WebRequest http://127.0.0.1:8000 -UseBasicParsing
+          Invoke-WebRequest http://127.0.0.1:8000/health -UseBasicParsing
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: Windows-EXE
+          name: windows-app
           path: dist/run.exe
