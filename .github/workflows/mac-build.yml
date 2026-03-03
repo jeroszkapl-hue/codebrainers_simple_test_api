@@ -1,51 +1,49 @@
-name: Build macOS
+name: Build & Test macOS App
 
 on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-macos:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
         run: |
-          pip install fastapi uvicorn pyinstaller
+          pip install fastapi uvicorn py2app
 
-      # 🔧 BUILD (bez --onefile)
-      - name: Build APP
+      - name: Create setup.py
         run: |
-          pyinstaller run.py \
-            --name run \
-            --windowed \
-            --onedir \
-            --target-architecture universal2 \
-            --hidden-import=anyio._backends._asyncio \
-            --hidden-import=anyio._backends._trio \
-            --collect-all anyio \
-            --collect-all fastapi \
-            --collect-all uvicorn \
-            --collect-all starlette
+          echo "from setuptools import setup" >> setup.py
+          echo "APP = ['run.py']" >> setup.py
+          echo "OPTIONS = {'argv_emulation': True, 'packages': ['uvicorn','fastapi'], 'includes': ['tkinter']}" >> setup.py
+          echo "setup(app=APP, options={'py2app': OPTIONS}, setup_requires=['py2app'])" >> setup.py
 
-      # 🚀 TEST jak prawdziwy user (open .app)
-      - name: Test app start
+      - name: Build app
+        run: python setup.py py2app
+
+      - name: Run app and test server
+
+
         run: |
-          open dist/run.app
-          sleep 8
-          curl -f http://127.0.0.1:8000/health
+          chmod +x dist/run.app/Contents/MacOS/run
+          dist/run.app/Contents/MacOS/run &
+          sleep 6
+          curl -f http://127.0.0.1:8000
 
-      - name: Zip app
-        run: |
-          cd dist
-          zip -r run-macos.zip run.app
+      - name: Codesign (local trust)
+        run: codesign --deep --force --sign - dist/run.app
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: macos-app
-          path: dist/run-macos.zip
+          name: macOS-App
+          path: run.app
