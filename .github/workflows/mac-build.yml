@@ -14,13 +14,18 @@ jobs:
         with:
           python-version: "3.11"
 
-      - run: pip install fastapi uvicorn pyinstaller
+      - name: Install dependencies
+        run: |
+          pip install fastapi uvicorn pyinstaller
 
+      # 🔧 BUILD (bez --onefile)
       - name: Build APP
         run: |
           pyinstaller run.py \
             --name run \
             --windowed \
+            --onedir \
+            --target-architecture universal2 \
             --hidden-import=anyio._backends._asyncio \
             --hidden-import=anyio._backends._trio \
             --collect-all anyio \
@@ -28,14 +33,19 @@ jobs:
             --collect-all uvicorn \
             --collect-all starlette
 
+      # 🚀 TEST jak prawdziwy user (open .app)
       - name: Test app start
         run: |
-          chmod +x dist/run.app/Contents/MacOS/run
-          dist/run.app/Contents/MacOS/run &
-          sleep 6
+          open dist/run.app
+          sleep 8
           curl -f http://127.0.0.1:8000/health
+
+      - name: Zip app
+        run: |
+          cd dist
+          zip -r run-macos.zip run.app
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos-app
-          path: dist/run.app
+          path: dist/run-macos.zip
