@@ -27,14 +27,12 @@ jobs:
             --collect-all fastapi \
             --collect-all uvicorn \
             --collect-all starlette
-
       - name: Test app start
         run: |
           chmod +x dist/run.app/Contents/MacOS/run
           dist/run.app/Contents/MacOS/run &
           sleep 6
           curl -f http://127.0.0.1:8000/health
-
       - uses: actions/upload-artifact@v4
         with:
           name: macos-app
