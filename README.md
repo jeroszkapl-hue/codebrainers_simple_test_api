@@ -34,3 +34,6 @@ python run.py
 ```
 
 2. Navigate to: ```http://127.0.0.1:8000/```
+
+# Functional Requirements
+Available [here](FUNCTIONAL_REQUIREMENTS.md)

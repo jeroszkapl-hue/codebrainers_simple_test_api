@@ -2,8 +2,20 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
 from typing import List
+from enum import Enum
 
 app = FastAPI(title="Dummy Employee API")
+
+
+# -------------------
+# ENUMS
+# -------------------
+class PositionEnum(str, Enum):
+    junior = "Junior QA"
+    mid = "Mid QA"
+    senior = "Senior QA"
+    lead = "QA Lead"
+
 
 # -------------------
 # Models
@@ -15,22 +27,28 @@ class Employee(BaseModel):
         max_length=50,
         pattern=r"^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+(?: [A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+)*$"
     )
+
     salary: int = Field(..., ge=1, le=200000)
     age: int = Field(..., ge=18, le=65)
+
+    position: PositionEnum
+
+    on_leave: bool = False
 
     @field_validator("salary")
     @classmethod
     def validate_salary(cls, v):
         if v < 0:
-            raise ValueError("Salary below minimum (0) wage threshold")
+            raise ValueError("Salary below minimum wage threshold")
         return v
-    
+
     @field_validator("age")
     @classmethod
     def validate_age(cls, v):
-        if v < 18 and v > 65:
+        if v < 18 or v > 65:
             raise ValueError("Age should be between 18 and 65")
         return v
+
 
 class EmployeeResponse(Employee):
     id: int
@@ -59,28 +77,43 @@ def get_employees():
 @app.post("/api/employees", response_model=EmployeeResponse)
 def add_employee(employee: Employee):
     global current_id
-    emp = EmployeeResponse(id=current_id, **employee.dict())
+
+    emp = EmployeeResponse(
+        id=current_id,
+        **employee.model_dump()
+    )
+
     employees.append(emp)
     current_id += 1
+
     return emp
 
 
 @app.put("/api/employees/{emp_id}", response_model=EmployeeResponse)
 def update_employee(emp_id: int, employee: Employee):
+
     for i, emp in enumerate(employees):
         if emp.id == emp_id:
-            updated = EmployeeResponse(id=emp_id, **employee.dict())
+
+            updated = EmployeeResponse(
+                id=emp_id,
+                **employee.model_dump()
+            )
+
             employees[i] = updated
             return updated
+
     raise HTTPException(status_code=404, detail="Employee not found")
 
 
 @app.delete("/api/employees/{emp_id}")
 def delete_employee(emp_id: int):
+
     for emp in employees:
         if emp.id == emp_id:
             employees.remove(emp)
             return {"status": "deleted"}
+
     raise HTTPException(status_code=404, detail="Employee not found")
 
 
@@ -96,6 +129,7 @@ def ui():
 <title>Employee Manager</title>
 
 <style>
+
 /* ---------- NAVBAR ---------- */
 .navbar {
     height: 64px;
@@ -115,11 +149,11 @@ body.dark .navbar {
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 0.5px;
-    background: rgba(255, 255, 255, 0.1); /* light transparent */
+    background: rgba(255, 255, 255, 0.1);
     color: var(--text);
     padding: 6px 14px;
-    border-radius: 12px; /* rounded corners */
-    backdrop-filter: blur(8px); /* glass effect */
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
     border: 1px solid rgba(255,255,255,0.2);
     box-shadow: 0 8px 20px rgba(0,0,0,0.25);
     display: inline-block;
@@ -140,8 +174,6 @@ body.dark .logo {
 .logo span {
     color: var(--accent);
 }
-
-
 
 /* ---------- THEME VARIABLES ---------- */
 body.dark {
@@ -179,22 +211,9 @@ body {
 }
 
 .container {
-    max-width: 1100px;
+    max-width: 1200px;
     margin: auto;
     padding: 40px 30px;
-}
-
-/* ---------- HEADER ---------- */
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 35px;
-}
-
-h1 {
-    margin: 0;
-    font-weight: 600;
 }
 
 /* ---------- TOGGLE ---------- */
@@ -228,7 +247,8 @@ h1 {
     flex-wrap: wrap;
 }
 
-input {
+input,
+select {
     flex: 1;
     background: transparent;
     border: 1px solid rgba(0,0,0,0.15);
@@ -237,7 +257,8 @@ input {
     border-radius: 10px;
 }
 
-body.dark input {
+body.dark input,
+body.dark select {
     border-color: #262c3a;
     background: #0f131b;
 }
@@ -246,9 +267,18 @@ input::placeholder {
     color: var(--muted);
 }
 
-input:focus {
+input:focus,
+select:focus {
     outline: none;
     border-color: var(--accent);
+}
+
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    min-width: 160px;
 }
 
 /* ---------- BUTTONS ---------- */
@@ -340,10 +370,6 @@ tbody tr:hover {
     font-weight: 600;
 }
 
-.footer a:hover {
-    text-decoration: underline;
-}
-
 /* ---------- ERROR BOX ---------- */
 .error-box {
     margin-top: 15px;
@@ -360,151 +386,267 @@ tbody tr:hover {
 </head>
 
 <body class="dark">
+
 <div class="container">
 
 <div class="navbar">
     <div class="logo">
         <span>&lt;/&gt;</span> EmployeeManager
     </div>
-    <div class="nav-right">
-        <button class="toggle" onclick="toggleTheme()">🌗 Theme</button>
-    </div>
+
+    <button class="toggle" onclick="toggleTheme()">
+        🌗 Theme
+    </button>
 </div>
+
 <br>
+
 <div class="card" id="formCard">
+
     <h3 id="form-title">Add Employee</h3>
 
     <div class="form-row">
+
         <input id="name" maxlength="50" placeholder="Name">
+
         <input id="salary" type="number" placeholder="Salary">
+
         <input id="age" type="number" placeholder="Age">
-        <button id="submitBtn" class="btn-add" onclick="addEmployee()">Add</button>
+
+        <select id="position">
+            <option value="">Select position</option>
+            <option value="Junior QA">Junior QA</option>
+            <option value="Mid QA">Mid QA</option>
+            <option value="Senior QA">Senior QA</option>
+            <option value="QA Lead">QA Lead</option>
+        </select>
+
+        <label class="checkbox-row">
+            <input type="checkbox" id="on_leave">
+            On vacation
+        </label>
+
+        <button
+            id="submitBtn"
+            class="btn-add"
+            onclick="addEmployee()"
+        >
+            Add
+        </button>
+
     </div>
 
     <div id="errorBox" class="error-box"></div>
+
 </div>
 
 <table>
+
 <thead>
 <tr>
     <th>ID</th>
     <th>Name</th>
     <th>Salary</th>
     <th>Age</th>
+    <th>Position</th>
+    <th>Vacation</th>
     <th>Actions</th>
 </tr>
 </thead>
+
 <tbody id="employees"></tbody>
+
 </table>
 
 </div>
 
 <div class="footer">
     © <span id="year"></span>
-    <a href="http://www.codebrainers.pl" target="_blank" rel="noopener">
-        CodeBrainers
-    </a>
+    CodeBrainers
     · v<span id="version"></span>
     · Built: <span id="buildTime"></span>
 </div>
 
-
-
 <script>
+
 // ----- META INFO -----
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 
 document.getElementById('year').innerText = new Date().getFullYear();
 document.getElementById('version').innerText = APP_VERSION;
 
 const buildDate = new Date();
+
 document.getElementById('buildTime').innerText =
     buildDate.toISOString().replace('T', ' ').substring(0, 16);
 
-/* ---------- THEME ---------- */
+// ---------- THEME ----------
 function toggleTheme() {
+
     const body = document.body;
-    const newTheme = body.classList.contains('dark') ? 'light' : 'dark';
+
+    const newTheme =
+        body.classList.contains('dark')
+        ? 'light'
+        : 'dark';
+
     body.className = newTheme;
+
     localStorage.setItem('theme', newTheme);
 }
 
 (function initTheme() {
+
     const saved = localStorage.getItem('theme');
-    if (saved) document.body.className = saved;
+
+    if (saved) {
+        document.body.className = saved;
+    }
+
 })();
 
-/* ---------- APP ---------- */
+// ---------- APP ----------
 let editId = null;
 
+const nameInput = document.getElementById('name');
+const salaryInput = document.getElementById('salary');
+const ageInput = document.getElementById('age');
+const positionInput = document.getElementById('position');
+const onLeaveInput = document.getElementById('on_leave');
+
 function showError(message) {
+
     const box = document.getElementById('errorBox');
+
     box.innerText = message;
     box.style.display = 'block';
 }
 
 function clearError() {
+
     const box = document.getElementById('errorBox');
+
     box.innerText = '';
     box.style.display = 'none';
 }
 
 async function handleApiError(res) {
+
     const error = await res.json();
 
     if (Array.isArray(error.detail)) {
+
         const messages = error.detail
             .map(e => `${e.loc.at(-1)}: ${e.msg}`)
             .join(', ');
 
         showError(messages);
+
     } else {
+
         showError(error.detail || "Unknown error");
     }
 }
 
+function getFormData() {
+
+    return {
+        name: nameInput.value,
+        salary: Number(salaryInput.value),
+        age: Number(ageInput.value),
+        position: positionInput.value,
+        on_leave: onLeaveInput.checked
+    };
+}
+
 async function loadEmployees() {
+
     const res = await fetch('/api/employees');
+
     const data = await res.json();
+
     const tbody = document.getElementById('employees');
+
     tbody.innerHTML = '';
 
     data.forEach(e => {
+
         tbody.innerHTML += `
         <tr>
             <td>${e.id}</td>
             <td>${e.name}</td>
             <td>${e.salary}</td>
             <td>${e.age}</td>
+            <td>${e.position}</td>
+            <td>${e.on_leave ? '✅' : '❌'}</td>
+
             <td class="actions">
-                <button class="btn-edit" onclick="editEmployee(${e.id}, '${e.name}', ${e.salary}, ${e.age})">Edit</button>
-                <button class="btn-delete" onclick="deleteEmployee(${e.id})">Delete</button>
+
+                <button
+                    class="btn-edit"
+                    onclick="editEmployee(
+                        ${e.id},
+                        '${e.name}',
+                        ${e.salary},
+                        ${e.age},
+                        '${e.position}',
+                        ${e.on_leave}
+                    )"
+                >
+                    Edit
+                </button>
+
+                <button
+                    class="btn-delete"
+                    onclick="deleteEmployee(${e.id})"
+                >
+                    Delete
+                </button>
+
             </td>
         </tr>`;
     });
 }
 
-function editEmployee(id, name, salary, age) {
+function editEmployee(
+    id,
+    name,
+    salary,
+    age,
+    position,
+    on_leave
+) {
+
     editId = id;
+
     nameInput.value = name;
     salaryInput.value = salary;
     ageInput.value = age;
+    positionInput.value = position;
+    onLeaveInput.checked = on_leave;
 
-    document.getElementById('form-title').innerText = "Edit Employee";
+    document.getElementById('form-title').innerText =
+        "Edit Employee";
+
     const btn = document.getElementById('submitBtn');
+
     btn.innerText = "Update";
     btn.className = "btn-update";
     btn.onclick = updateEmployee;
 
-    document.getElementById('formCard').classList.add('editing');
+    document.getElementById('formCard')
+        .classList.add('editing');
 }
 
 async function addEmployee() {
+
     clearError();
 
     const res = await fetch('/api/employees', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json'
+        },
         body: JSON.stringify(getFormData())
     });
 
@@ -514,15 +656,19 @@ async function addEmployee() {
     }
 
     resetForm();
+
     loadEmployees();
 }
 
 async function updateEmployee() {
+
     clearError();
 
     const res = await fetch(`/api/employees/${editId}`, {
         method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json'
+        },
         body: JSON.stringify(getFormData())
     });
 
@@ -532,10 +678,12 @@ async function updateEmployee() {
     }
 
     resetForm();
+
     loadEmployees();
 }
 
 async function deleteEmployee(id) {
+
     clearError();
 
     const res = await fetch(`/api/employees/${id}`, {
@@ -550,35 +698,33 @@ async function deleteEmployee(id) {
     loadEmployees();
 }
 
-const nameInput = document.getElementById('name');
-const salaryInput = document.getElementById('salary');
-const ageInput = document.getElementById('age');
-
-function getFormData() {
-    return {
-        name: nameInput.value,
-        salary: Number(salaryInput.value),
-        age: Number(ageInput.value)
-    };
-}
-
 function resetForm() {
+
     editId = null;
+
     nameInput.value = '';
     salaryInput.value = '';
     ageInput.value = '';
-    document.getElementById('form-title').innerText = "Add Employee";
+    positionInput.value = '';
+    onLeaveInput.checked = false;
+
+    document.getElementById('form-title').innerText =
+        "Add Employee";
 
     const btn = document.getElementById('submitBtn');
+
     btn.innerText = "Add";
     btn.className = "btn-add";
     btn.onclick = addEmployee;
 
-    document.getElementById('formCard').classList.remove('editing');
+    document.getElementById('formCard')
+        .classList.remove('editing');
 }
 
 loadEmployees();
+
 </script>
+
 </body>
 </html>
-""" 
+"""
