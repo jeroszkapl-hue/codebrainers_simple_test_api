@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 
 app = FastAPI(title="Dummy Employee API")
@@ -15,9 +15,22 @@ class Employee(BaseModel):
         max_length=50,
         pattern=r"^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+(?: [A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+)*$"
     )
-    salary: int
-    age: int
+    salary: int = Field(..., ge=1, le=200000)
+    age: int = Field(..., ge=18, le=65)
 
+    @field_validator("salary")
+    @classmethod
+    def validate_salary(cls, v):
+        if v < 0:
+            raise ValueError("Salary below minimum (0) wage threshold")
+        return v
+    
+    @field_validator("age")
+    @classmethod
+    def validate_age(cls, v):
+        if v < 18 and v > 65:
+            raise ValueError("Age should be between 18 and 65")
+        return v
 
 class EmployeeResponse(Employee):
     id: int
