@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 
 app = FastAPI(title="Dummy Employee API")
@@ -9,7 +9,12 @@ app = FastAPI(title="Dummy Employee API")
 # Models
 # -------------------
 class Employee(BaseModel):
-    name: str
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        pattern=r"^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+(?: [A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+)*$"
+    )
     salary: int
     age: int
 
@@ -326,6 +331,18 @@ tbody tr:hover {
     text-decoration: underline;
 }
 
+/* ---------- ERROR BOX ---------- */
+.error-box {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(229, 83, 61, 0.12);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    display: none;
+    font-size: 14px;
+}
+
 </style>
 </head>
 
@@ -343,12 +360,15 @@ tbody tr:hover {
 <br>
 <div class="card" id="formCard">
     <h3 id="form-title">Add Employee</h3>
+
     <div class="form-row">
-        <input id="name" placeholder="Name">
+        <input id="name" maxlength="50" placeholder="Name">
         <input id="salary" type="number" placeholder="Salary">
         <input id="age" type="number" placeholder="Age">
         <button id="submitBtn" class="btn-add" onclick="addEmployee()">Add</button>
     </div>
+
+    <div id="errorBox" class="error-box"></div>
 </div>
 
 <table>
@@ -404,6 +424,32 @@ function toggleTheme() {
 /* ---------- APP ---------- */
 let editId = null;
 
+function showError(message) {
+    const box = document.getElementById('errorBox');
+    box.innerText = message;
+    box.style.display = 'block';
+}
+
+function clearError() {
+    const box = document.getElementById('errorBox');
+    box.innerText = '';
+    box.style.display = 'none';
+}
+
+async function handleApiError(res) {
+    const error = await res.json();
+
+    if (Array.isArray(error.detail)) {
+        const messages = error.detail
+            .map(e => `${e.loc.at(-1)}: ${e.msg}`)
+            .join(', ');
+
+        showError(messages);
+    } else {
+        showError(error.detail || "Unknown error");
+    }
+}
+
 async function loadEmployees() {
     const res = await fetch('/api/employees');
     const data = await res.json();
@@ -441,27 +487,53 @@ function editEmployee(id, name, salary, age) {
 }
 
 async function addEmployee() {
-    await fetch('/api/employees', {
+    clearError();
+
+    const res = await fetch('/api/employees', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(getFormData())
     });
+
+    if (!res.ok) {
+        await handleApiError(res);
+        return;
+    }
+
     resetForm();
     loadEmployees();
 }
 
 async function updateEmployee() {
-    await fetch(`/api/employees/${editId}`, {
+    clearError();
+
+    const res = await fetch(`/api/employees/${editId}`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(getFormData())
     });
+
+    if (!res.ok) {
+        await handleApiError(res);
+        return;
+    }
+
     resetForm();
     loadEmployees();
 }
 
 async function deleteEmployee(id) {
-    await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+    clearError();
+
+    const res = await fetch(`/api/employees/${id}`, {
+        method: 'DELETE'
+    });
+
+    if (!res.ok) {
+        await handleApiError(res);
+        return;
+    }
+
     loadEmployees();
 }
 
