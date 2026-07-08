@@ -132,3 +132,6 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code (local, machine-specific settings — .claude/agents, commands etc. stay tracked)
+.claude/settings.local.json
