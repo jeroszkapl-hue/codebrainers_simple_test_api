@@ -462,7 +462,7 @@ tbody tr:hover {
 
 <div class="footer">
     © <span id="year"></span>
-    CodeBrainers
+    <a href="http://www.codebrainers.pl">CodeBrainers</a>
     · v<span id="version"></span>
     · Built: <span id="buildTime"></span>
 </div>
