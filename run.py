@@ -87,7 +87,7 @@ def show_window():
     root = tk.Tk()
 
     root.title("Employee Manager")
-    root.geometry("500x320")
+    root.geometry("800x600")
     root.resizable(False, False)
 
     # ---------- COLORS ----------
