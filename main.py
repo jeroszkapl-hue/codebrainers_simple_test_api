@@ -117,6 +117,16 @@ def delete_employee(emp_id: int):
     raise HTTPException(status_code=404, detail="Employee not found")
 
 
+@app.post("/api/employees/reset")
+def reset_employees():
+    global current_id
+
+    employees.clear()
+    current_id = 1
+
+    return {"status": "reset"}
+
+
 # -------------------
 # UI
 # -------------------
@@ -217,6 +227,12 @@ body {
 }
 
 /* ---------- TOGGLE ---------- */
+.navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .toggle {
     background: var(--card);
     border: 1px solid rgba(255,255,255,0.1);
@@ -225,6 +241,11 @@ body {
     border-radius: 20px;
     cursor: pointer;
     font-weight: 600;
+}
+
+.btn-reset {
+    color: var(--danger);
+    border-color: var(--danger);
 }
 
 /* ---------- CARD ---------- */
@@ -382,6 +403,56 @@ tbody tr:hover {
     font-size: 14px;
 }
 
+/* ---------- MODAL ---------- */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+.modal-card {
+    background: var(--card);
+    padding: 26px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    width: 360px;
+    max-width: 90vw;
+}
+
+.modal-card h3 {
+    margin-top: 0;
+}
+
+.modal-card p {
+    color: var(--muted);
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-cancel {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+.btn-confirm-danger {
+    background: var(--danger);
+    color: #fff;
+}
+
 </style>
 </head>
 
@@ -394,9 +465,15 @@ tbody tr:hover {
         <span>&lt;/&gt;</span> EmployeeManager
     </div>
 
-    <button class="toggle" onclick="toggleTheme()">
-        🌗 Theme
-    </button>
+    <div class="navbar-actions">
+        <button class="toggle btn-reset" onclick="resetData()">
+            🗑️ Reset Data
+        </button>
+
+        <button class="toggle" onclick="toggleTheme()">
+            🌗 Theme
+        </button>
+    </div>
 </div>
 
 <br>
@@ -460,6 +537,23 @@ tbody tr:hover {
 
 </div>
 
+<div class="modal-overlay" id="resetModal">
+    <div class="modal-card">
+        <h3>Reset Data</h3>
+        <p>Are you sure you want to delete all employees? This action cannot be undone.</p>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="hideResetModal()">
+                Cancel
+            </button>
+
+            <button class="btn-confirm-danger" onclick="confirmReset()">
+                Delete All
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="footer">
     © <span id="year"></span>
     <a href="http://www.codebrainers.pl">CodeBrainers</a>
@@ -470,7 +564,7 @@ tbody tr:hover {
 <script>
 
 // ----- META INFO -----
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.2.0";
 
 document.getElementById('year').innerText = new Date().getFullYear();
 document.getElementById('version').innerText = APP_VERSION;
@@ -694,6 +788,34 @@ async function deleteEmployee(id) {
         await handleApiError(res);
         return;
     }
+
+    loadEmployees();
+}
+
+function resetData() {
+    document.getElementById('resetModal').classList.add('open');
+}
+
+function hideResetModal() {
+    document.getElementById('resetModal').classList.remove('open');
+}
+
+async function confirmReset() {
+
+    hideResetModal();
+
+    clearError();
+
+    const res = await fetch('/api/employees/reset', {
+        method: 'POST'
+    });
+
+    if (!res.ok) {
+        await handleApiError(res);
+        return;
+    }
+
+    resetForm();
 
     loadEmployees();
 }

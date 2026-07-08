@@ -21,7 +21,8 @@ Użytkownik powinien mieć możliwość:
 - dodania nowego pracownika,
 - edycji istniejącego pracownika,
 - usunięcia pracownika,
-- przeglądania listy pracowników.
+- przeglądania listy pracowników,
+- zresetowania wszystkich danych (usunięcia wszystkich pracowników jednym działaniem).
 
 # 3. Model pracownika
 
@@ -98,6 +99,7 @@ Pole `on_leave`:
 Navbar powinien zawierać:
 
 * logo aplikacji,
+* przycisk resetu danych (`Reset Data`),
 * przycisk zmiany motywu.
 
 ## 5.2 Motyw aplikacji
@@ -109,6 +111,21 @@ Aplikacja powinna obsługiwać:
 Wybrany motyw powinien:
 * być zapisywany w localStorage,
 * być przywracany po odświeżeniu strony.
+
+## 5.3 Modal potwierdzenia resetu danych
+
+Kliknięcie przycisku `Reset Data` powinno:
+* otwierać modal potwierdzenia (nie wykonywać resetu od razu),
+* wyświetlać tytuł `Reset Data`,
+* wyświetlać treść ostrzegawczą informującą, że operacja jest nieodwracalna,
+* zawierać przycisk `Cancel` zamykający modal bez wykonania żadnej akcji,
+* zawierać przycisk `Delete All` wywołujący reset danych i zamykający modal.
+
+Modal:
+* powinien być natywnym elementem HTML aplikacji (nie przeglądarkowym `confirm()`),
+* powinien być spójny wizualnie z resztą UI (dark/light mode, rounded corners, accent color).
+
+**Wszystkie modale w aplikacji (treść, przyciski) muszą być w języku angielskim.**
 
 # 6. Formularz pracownika
 ## 6.1 Formularz dodawania
@@ -239,6 +256,7 @@ Walidacja danych powinna być realizowana:
 | POST | `/api/employees` | Dodanie pracownika |
 | PUT | `/api/employees/{id}` | Aktualizacja pracownika |
 | DELETE | `/api/employees/{id}` | Usunięcie pracownika |
+| POST | `/api/employees/reset` | Usunięcie wszystkich pracowników i zresetowanie licznika ID |
 
 # 13. Wymagania UX/UI
 
