@@ -1,0 +1,402 @@
+{
+  "info": {
+    "name": "Employee API",
+    "_postman_id": "employee-api-collection",
+    "description": "CRUD collection for the Dummy Employee API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000",
+      "type": "string"
+    },
+    {
+      "key": "employeeId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response body contains status ok', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.status).to.eql('ok');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET All Employees",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/employees",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response is an array', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('Response time is under 500ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(500);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Create Employee",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Jan Kowalski\",\n  \"salary\": 8000,\n  \"age\": 30,\n  \"position\": \"Mid QA\",\n  \"on_leave\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains created employee', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('id');",
+              "    pm.expect(json.name).to.eql('Jan Kowalski');",
+              "    pm.expect(json.salary).to.eql(8000);",
+              "    pm.expect(json.age).to.eql(30);",
+              "    pm.expect(json.position).to.eql('Mid QA');",
+              "    pm.expect(json.on_leave).to.eql(false);",
+              "});",
+              "",
+              "pm.test('ID is a number', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.id).to.be.a('number');",
+              "});",
+              "",
+              "// Save the created employee ID for later requests",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('employeeId', json.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Create Employee - Invalid Name",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"!!Invalid!!\",\n  \"salary\": 5000,\n  \"age\": 25,\n  \"position\": \"Junior QA\",\n  \"on_leave\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 422 for invalid name', function () {",
+              "    pm.response.to.have.status(422);",
+              "});",
+              "",
+              "pm.test('Response contains validation error detail', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('detail');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Create Employee - Age Out of Range",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Anna Nowak\",\n  \"salary\": 5000,\n  \"age\": 17,\n  \"position\": \"Junior QA\",\n  \"on_leave\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 422 for age below 18', function () {",
+              "    pm.response.to.have.status(422);",
+              "});",
+              "",
+              "pm.test('Response contains validation error detail', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('detail');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Create Employee - Salary Out of Range",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Piotr Wiśniewski\",\n  \"salary\": 999999,\n  \"age\": 35,\n  \"position\": \"Senior QA\",\n  \"on_leave\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 422 for salary above 200000', function () {",
+              "    pm.response.to.have.status(422);",
+              "});",
+              "",
+              "pm.test('Response contains validation error detail', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('detail');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT Update Employee",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Jan Kowalski\",\n  \"salary\": 12000,\n  \"age\": 31,\n  \"position\": \"Senior QA\",\n  \"on_leave\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees", "{{employeeId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Employee was updated correctly', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.salary).to.eql(12000);",
+              "    pm.expect(json.age).to.eql(31);",
+              "    pm.expect(json.position).to.eql('Senior QA');",
+              "    pm.expect(json.on_leave).to.eql(true);",
+              "});",
+              "",
+              "pm.test('ID did not change after update', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(String(json.id)).to.eql(pm.collectionVariables.get('employeeId').toString());",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT Update Employee - Not Found",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Ghost Employee\",\n  \"salary\": 5000,\n  \"age\": 25,\n  \"position\": \"Junior QA\",\n  \"on_leave\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/99999",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees", "99999"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404 for non-existent employee', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Response contains Employee not found message', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.detail).to.eql('Employee not found');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE Employee",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees", "{{employeeId}}"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response confirms deletion', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.status).to.eql('deleted');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE Employee - Not Found",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/99999",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees", "99999"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404 for non-existent employee', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Response contains Employee not found message', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.detail).to.eql('Employee not found');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}
