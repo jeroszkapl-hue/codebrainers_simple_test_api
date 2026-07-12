@@ -26,16 +26,25 @@ Użytkownik powinien mieć możliwość:
 
 # 3. Model pracownika
 
-Pracownik powinien zawierać następujące pola:
+## 3.1 Pola w żądaniu (request)
+
+Treść żądania `POST`/`PUT` powinna zawierać następujące pola:
 
 | Pole | Typ | Wymagane | Opis |
 |---|---|---|---|
-| id | integer | Tak | Unikalny identyfikator |
 | name | string | Tak | Imię i nazwisko pracownika |
 | salary | integer | Tak | Wynagrodzenie |
 | age | integer | Tak | Wiek pracownika |
 | position | enum/string | Tak | Stanowisko pracownika |
-| on_leave | boolean | Tak | Status urlopu |
+| on_leave | boolean | Nie (domyślnie `false`) | Status urlopu |
+
+## 3.2 Pole `id`
+
+* jest generowane automatycznie przez backend przy dodaniu pracownika,
+* nie powinno być wysyłane w treści żądania `POST`/`PUT` — jeśli zostanie przesłane, jest ignorowane,
+* występuje wyłącznie w odpowiedzi API (`id` + pola z sekcji 3.1),
+* jest unikalne i inkrementowane przy każdym nowo dodanym pracowniku,
+* jest resetowane do wartości `1` po wywołaniu `POST /api/employees/reset`.
 
 # 4. Walidacja danych
 
@@ -127,6 +136,11 @@ Modal:
 
 **Wszystkie modale w aplikacji (treść, przyciski) muszą być w języku angielskim.**
 
+Po potwierdzeniu resetu (`Delete All`) aplikacja powinna:
+* usunąć wszystkich pracowników,
+* wyczyścić formularz dodawania/edycji — jeśli formularz był w trybie edycji, powinien wrócić do trybu `Add Employee`,
+* odświeżyć tabelę pracowników (powinna zostać pusta).
+
 # 6. Formularz pracownika
 ## 6.1 Formularz dodawania
 
@@ -195,17 +209,38 @@ Kolumna `Actions` powinna zawierać:
 | Edit | Edycja danych pracownika |
 | Delete | Usunięcie pracownika |
 
+## 9.4 Stan pusty
+
+Gdy lista pracowników jest pusta (np. po wywołaniu resetu lub przy pierwszym uruchomieniu):
+* tabela nadal wyświetla nagłówki kolumn,
+* `tbody` nie zawiera żadnych wierszy,
+* aplikacja nie wyświetla obecnie dedykowanego komunikatu typu „Brak pracowników” — do rozważenia jako przyszłe usprawnienie UX.
+
 # 10. Obsługa błędów
 
-## 10.1 Walidacja backendowa
+## 10.1 Kody statusu HTTP
 
-Backend powinien zwracać błędy walidacyjne dla:
+| Scenariusz | Kod statusu | Treść odpowiedzi |
+|---|---|---|
+| Operacja zakończona sukcesem (`GET`, `POST`, `PUT`, `DELETE`, `POST /reset`) | 200 | Zaktualizowany zasób / lista / status |
+| Niepoprawne dane wejściowe (`name`, `salary`, `age`, `position`) | 422 | `{"detail": [...]}` — lista błędów walidacji Pydantic |
+| `PUT`/`DELETE` na nieistniejącym `id` | 404 | `{"detail": "Employee not found"}` |
+
+## 10.2 Walidacja backendowa
+
+Backend powinien zwracać błędy walidacyjne (422) dla:
 - niepoprawnego `name`,
 - niepoprawnego `salary`,
 - niepoprawnego `age`,
 - niepoprawnego `position`.
 
-## 10.2 Error Box
+## 10.3 Nieznaleziony pracownik (404)
+
+Endpointy `PUT /api/employees/{id}` oraz `DELETE /api/employees/{id}` powinny:
+- zwracać kod `404`, jeśli pracownik o podanym `id` nie istnieje,
+- zwracać treść `{"detail": "Employee not found"}`.
+
+## 10.4 Error Box
 
 Frontend powinien:
 - wyświetlać komunikaty błędów,
@@ -249,14 +284,14 @@ Walidacja danych powinna być realizowana:
 
 ## 12.4 Obsługiwane endpointy
 
-| Metoda HTTP | Endpoint | Opis |
-|---|---|---|
-| GET | `/health` | Healthcheck API |
-| GET | `/api/employees` | Pobranie listy pracowników |
-| POST | `/api/employees` | Dodanie pracownika |
-| PUT | `/api/employees/{id}` | Aktualizacja pracownika |
-| DELETE | `/api/employees/{id}` | Usunięcie pracownika |
-| POST | `/api/employees/reset` | Usunięcie wszystkich pracowników i zresetowanie licznika ID |
+| Metoda HTTP | Endpoint | Opis | Kod sukcesu |
+|---|---|---|---|
+| GET | `/health` | Healthcheck API | 200 |
+| GET | `/api/employees` | Pobranie listy pracowników | 200 |
+| POST | `/api/employees` | Dodanie pracownika | 200 |
+| PUT | `/api/employees/{id}` | Aktualizacja pracownika | 200 (404 jeśli `id` nie istnieje) |
+| DELETE | `/api/employees/{id}` | Usunięcie pracownika | 200 (404 jeśli `id` nie istnieje) |
+| POST | `/api/employees/reset` | Usunięcie wszystkich pracowników i zresetowanie licznika ID | 200 |
 
 # 13. Wymagania UX/UI
 
@@ -294,7 +329,7 @@ Tabela powinna:
 - posiadać wyróżniony nagłówek,
 - wyświetlać dane w sposób centralnie wyrównany.
 
-## 14.5 Obsługa błędów
+## 13.5 Obsługa błędów
 
 Komunikaty błędów powinny:
 - być widoczne dla użytkownika,
