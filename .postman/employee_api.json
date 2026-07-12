@@ -35,7 +35,7 @@
           "script": {
             "exec": [
               "pm.test('Status code is 200', function () {",
-              "    pm.response.to.have.status(200);",
+              "    pm.giponse.to.have.status(200);",
               "});",
               "",
               "pm.test('Response body contains status ok', function () {",
@@ -391,6 +391,66 @@
               "pm.test('Response contains Employee not found message', function () {",
               "    const json = pm.response.json();",
               "    pm.expect(json.detail).to.eql('Employee not found');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Reset Employees",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/employees/reset",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees", "reset"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response confirms reset', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.status).to.eql('reset');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET All Employees - Empty After Reset",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/employees",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Employee list is empty after reset', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.be.an('array').that.is.empty;",
               "});"
             ],
             "type": "text/javascript"
