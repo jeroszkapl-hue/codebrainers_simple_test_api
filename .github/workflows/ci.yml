@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Ruff check
+        run: ruff check --output-format=github .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+  typecheck:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install mypy
+
+      - name: mypy
+        run: mypy . --ignore-missing-imports
+
+  security:
+    name: Security (Bandit + pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install bandit pip-audit
+
+      - name: Bandit
+        run: bandit -r . -x ./.venv,./tests
+
+      - name: pip-audit
+        run: pip-audit -r requirements.txt
+
+  build-macos:
+    name: Build macOS
+    needs: [lint, typecheck, security]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install fastapi uvicorn pyinstaller
+
+      - name: Build APP
+        run: |
+          pyinstaller run.py \
+            --name run \
+            --windowed \
+            --hidden-import=anyio._backends._asyncio \
+            --hidden-import=anyio._backends._trio \
+            --collect-all anyio \
+            --collect-all fastapi \
+            --collect-all uvicorn \
+            --collect-all starlette
+      - name: Test app start
+        run: |
+          chmod +x dist/run.app/Contents/MacOS/run
+          dist/run.app/Contents/MacOS/run &
+          sleep 6
+          curl -f http://127.0.0.1:8000/health
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-app
+          path: dist/run.app
+
+  build-windows:
+    name: Build Windows
+    needs: [lint, typecheck, security]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install fastapi uvicorn pyinstaller
+
+      - name: Build EXE
+        shell: powershell
+        run: |
+          pyinstaller run.py `
+            --name run `
+            --onefile `
+            --windowed `
+            --hidden-import=anyio._backends._asyncio `
+            --hidden-import=anyio._backends._trio `
+            --collect-all anyio `
+            --collect-all fastapi `
+            --collect-all uvicorn `
+            --collect-all starlette
+      - name: Test app start
+        shell: powershell
+        run: |
+          Start-Process dist/run.exe
+          Start-Sleep -Seconds 6
+          Invoke-WebRequest http://127.0.0.1:8000/health -UseBasicParsing
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: dist/run.exe
