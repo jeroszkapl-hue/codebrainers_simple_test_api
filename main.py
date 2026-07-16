@@ -25,7 +25,7 @@ class Employee(BaseModel):
         ...,
         min_length=1,
         max_length=50,
-        pattern=r"^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+(?: [A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+)*$"
+        pattern=r"^[A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+(?: [A-Za-zĄąĆćĘęŁłŃńÓóŚśŹźŻż0-9]+)*$",
     )
 
     salary: int = Field(..., ge=1, le=200000)
@@ -78,10 +78,7 @@ def get_employees():
 def add_employee(employee: Employee):
     global current_id
 
-    emp = EmployeeResponse(
-        id=current_id,
-        **employee.model_dump()
-    )
+    emp = EmployeeResponse(id=current_id, **employee.model_dump())
 
     employees.append(emp)
     current_id += 1
@@ -94,11 +91,7 @@ def update_employee(emp_id: int, employee: Employee):
 
     for i, emp in enumerate(employees):
         if emp.id == emp_id:
-
-            updated = EmployeeResponse(
-                id=emp_id,
-                **employee.model_dump()
-            )
+            updated = EmployeeResponse(id=emp_id, **employee.model_dump())
 
             employees[i] = updated
             return updated

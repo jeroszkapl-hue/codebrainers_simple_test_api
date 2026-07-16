@@ -22,13 +22,7 @@ server_ready = False
 def start_server():
     global server
 
-    config = uvicorn.Config(
-        app,
-        host=HOST,
-        port=PORT,
-        log_config=None,
-        loop="asyncio"
-    )
+    config = uvicorn.Config(app, host=HOST, port=PORT, log_config=None, loop="asyncio")
 
     server = uvicorn.Server(config)
     server.run()
@@ -48,7 +42,6 @@ def wait_until_ready(update_status, enable_button):
     update_status("⏳ Uruchamianie serwera...")
 
     for _ in range(120):
-
         if is_server_up(APP_URL):
             server_ready = True
 
@@ -100,20 +93,9 @@ def show_window():
     root.configure(bg=BG)
 
     # ---------- CARD ----------
-    card = tk.Frame(
-        root,
-        bg=CARD,
-        bd=0,
-        highlightthickness=0
-    )
+    card = tk.Frame(root, bg=CARD, bd=0, highlightthickness=0)
 
-    card.place(
-        relx=0.5,
-        rely=0.5,
-        anchor="center",
-        width=430,
-        height=240
-    )
+    card.place(relx=0.5, rely=0.5, anchor="center", width=430, height=240)
 
     # ---------- LOGO ----------
     logo = tk.Label(
@@ -121,18 +103,14 @@ def show_window():
         text="</> Employee Manager",
         bg=CARD,
         fg=ACCENT,
-        font=("Segoe UI", 15, "bold")
+        font=("Segoe UI", 15, "bold"),
     )
 
     logo.pack(pady=(20, 10))
 
     # ---------- TITLE ----------
     title = tk.Label(
-        card,
-        text="Status aplikacji",
-        bg=CARD,
-        fg=TEXT,
-        font=("Segoe UI", 18, "bold")
+        card, text="Status aplikacji", bg=CARD, fg=TEXT, font=("Segoe UI", 18, "bold")
     )
 
     title.pack(pady=(5, 15))
@@ -141,11 +119,7 @@ def show_window():
     status_var = tk.StringVar(value="Uruchamianie...")
 
     status = tk.Label(
-        card,
-        textvariable=status_var,
-        bg=CARD,
-        fg=MUTED,
-        font=("Segoe UI", 12)
+        card, textvariable=status_var, bg=CARD, fg=MUTED, font=("Segoe UI", 12)
     )
 
     status.pack(pady=(0, 20))
@@ -158,38 +132,26 @@ def show_window():
     except Exception:
         pass
 
-    style.configure(
-        "Accent.TButton",
-        font=("Segoe UI", 10, "bold"),
-        padding=10
-    )
+    style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"), padding=10)
 
     btn_open = ttk.Button(
         card,
         text="🌐 Otwórz aplikację",
         command=open_browser,
         state="disabled",
-        style="Accent.TButton"
+        style="Accent.TButton",
     )
 
     btn_open.pack(pady=8)
 
     # ---------- URL ----------
-    info = tk.Label(
-        card,
-        text=APP_URL,
-        bg=CARD,
-        fg=MUTED,
-        font=("Consolas", 10)
-    )
+    info = tk.Label(card, text=APP_URL, bg=CARD, fg=MUTED, font=("Consolas", 10))
 
     info.pack(pady=(10, 20))
 
     # ---------- CLOSE ----------
     btn_exit = ttk.Button(
-        card,
-        text="Zamknij",
-        command=lambda: stop_server_and_exit(root)
+        card, text="Zamknij", command=lambda: stop_server_and_exit(root)
     )
 
     btn_exit.pack()
@@ -208,15 +170,9 @@ def show_window():
     # ---------- MONITOR ----------
     def monitor():
 
-        wait_until_ready(
-            set_status,
-            enable_open_button
-        )
+        wait_until_ready(set_status, enable_open_button)
 
-    threading.Thread(
-        target=monitor,
-        daemon=True
-    ).start()
+    threading.Thread(target=monitor, daemon=True).start()
 
     root.mainloop()
 
@@ -225,10 +181,6 @@ def show_window():
 # MAIN
 # -------------------------
 if __name__ == "__main__":
-
-    threading.Thread(
-        target=start_server,
-        daemon=True
-    ).start()
+    threading.Thread(target=start_server, daemon=True).start()
 
     show_window()
