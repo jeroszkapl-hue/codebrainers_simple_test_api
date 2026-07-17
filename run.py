@@ -1,3 +1,4 @@
+import logging
 import threading
 import time
 import webbrowser
@@ -6,7 +7,10 @@ import urllib.request
 import uvicorn
 
 from tkinter import ttk
+from urllib.parse import urlparse
 from main import app
+
+logger = logging.getLogger(__name__)
 
 HOST = "127.0.0.1"
 PORT = 8000
@@ -29,8 +33,13 @@ def start_server():
 
 
 def is_server_up(url, timeout=0.5):
+    scheme = urlparse(url).scheme
+    if scheme not in ("http", "https"):
+        raise ValueError(f"Unsupported URL scheme: {scheme!r}")
+
+    # Scheme validated above; url is always the local APP_URL constant, not user input.
     try:
-        with urllib.request.urlopen(url, timeout=timeout):
+        with urllib.request.urlopen(url, timeout=timeout):  # nosec B310
             return True
     except Exception:
         return False
@@ -130,7 +139,7 @@ def show_window():
     try:
         style.theme_use("clam")
     except Exception:
-        pass
+        logger.debug("ttk theme 'clam' unavailable, using default theme", exc_info=True)
 
     style.configure("Accent.TButton", font=("Segoe UI", 10, "bold"), padding=10)
 
