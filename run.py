@@ -1,13 +1,14 @@
 import logging
 import threading
 import time
-import webbrowser
 import tkinter as tk
 import urllib.request
-import uvicorn
-
+import webbrowser
 from tkinter import ttk
 from urllib.parse import urlparse
+
+import uvicorn
+
 from main import app
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
+from enum import Enum
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field, field_validator
-from typing import List
-from enum import Enum
 
 app = FastAPI(title="Dummy Employee API")
 
@@ -57,7 +57,7 @@ class EmployeeResponse(Employee):
 # -------------------
 # In-memory storage
 # -------------------
-employees: List[EmployeeResponse] = []
+employees: list[EmployeeResponse] = []
 current_id = 1
 
 
@@ -69,7 +69,7 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/api/employees", response_model=List[EmployeeResponse])
+@app.get("/api/employees", response_model=list[EmployeeResponse])
 def get_employees():
     return employees
 
