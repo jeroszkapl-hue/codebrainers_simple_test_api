@@ -42,7 +42,7 @@ def is_server_up(url, timeout=0.5):
     try:
         with urllib.request.urlopen(url, timeout=timeout):  # nosec B310
             return True
-    except Exception:
+    except OSError:
         return False
 
 
