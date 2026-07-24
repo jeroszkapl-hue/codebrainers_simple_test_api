@@ -37,3 +37,12 @@ python run.py
 
 # Functional Requirements
 Available [here](FUNCTIONAL_REQUIREMENTS.md)
+
+# Downloads
+CI builds standalone macOS and Windows apps on each run (see [`ci.yml`](.github/workflows/ci.yml)). Grab the latest build:
+
+1. Open the [CI workflow runs](https://github.com/pwalaszkowski/codebrainers_simple_test_api/actions/workflows/ci.yml)
+2. Pick the most recent successful run
+3. Download `macos-app` or `windows-app` from the Artifacts section at the bottom of the run summary
+
+Note: GitHub Actions artifacts expire after 90 days and require being signed in to GitHub to download.
