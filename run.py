@@ -1,13 +1,14 @@
 import logging
 import threading
 import time
-import webbrowser
 import tkinter as tk
 import urllib.request
-import uvicorn
-
+import webbrowser
 from tkinter import ttk
 from urllib.parse import urlparse
+
+import uvicorn
+
 from main import app
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ def is_server_up(url, timeout=0.5):
     try:
         with urllib.request.urlopen(url, timeout=timeout):  # nosec B310
             return True
-    except Exception:
+    except OSError:
         return False
 
 
