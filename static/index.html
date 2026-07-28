@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Employee Manager</title>
+<link rel="stylesheet" href="/static/css/theme.css">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+
+<body class="dark">
+
+<div class="container">
+
+<div class="navbar">
+    <div class="logo">
+        <span>&lt;/&gt;</span> EmployeeManager
+    </div>
+
+    <div class="navbar-actions">
+        <button class="toggle btn-reset" onclick="resetData()">
+            🗑️ Reset Data
+        </button>
+
+        <button class="toggle" onclick="toggleTheme()">
+            🌗 Theme
+        </button>
+
+        <button class="toggle btn-reset" onclick="logout()">
+            🚪 Logout
+        </button>
+    </div>
+</div>
+
+<br>
+
+<div class="card" id="formCard">
+
+    <h3 id="form-title">Add Employee</h3>
+
+    <div class="form-row">
+
+        <input id="name" maxlength="50" placeholder="Name">
+
+        <input id="salary" type="number" placeholder="Salary">
+
+        <input id="age" type="number" placeholder="Age">
+
+        <select id="position">
+            <option value="">Select position</option>
+            <option value="Junior QA">Junior QA</option>
+            <option value="Mid QA">Mid QA</option>
+            <option value="Senior QA">Senior QA</option>
+            <option value="QA Lead">QA Lead</option>
+        </select>
+
+        <label class="checkbox-row">
+            <input type="checkbox" id="on_leave">
+            On vacation
+        </label>
+
+        <button
+            id="submitBtn"
+            class="btn-add"
+            onclick="addEmployee()"
+        >
+            Add
+        </button>
+
+    </div>
+
+    <div id="errorBox" class="error-box"></div>
+
+</div>
+
+<table>
+
+<thead>
+<tr>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Salary</th>
+    <th>Age</th>
+    <th>Position</th>
+    <th>Vacation</th>
+    <th>Actions</th>
+</tr>
+</thead>
+
+<tbody id="employees"></tbody>
+
+</table>
+
+</div>
+
+<div class="modal-overlay" id="resetModal">
+    <div class="modal-card">
+        <h3>Reset Data</h3>
+        <p>Are you sure you want to delete all employees? This action cannot be undone.</p>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="hideResetModal()">
+                Cancel
+            </button>
+
+            <button class="btn-confirm-danger" onclick="confirmReset()">
+                Delete All
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="footer">
+    © <span id="year"></span>
+    <a href="http://www.codebrainers.pl">CodeBrainers</a>
+    · v<span id="version"></span>
+    · Built: <span id="buildTime"></span>
+</div>
+
+<script src="/static/js/theme.js"></script>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/app.js"></script>
+
+</body>
+</html>

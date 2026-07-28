@@ -1,0 +1,55 @@
+/* Shared reset, theme variables (dark/light), and base body/components used
+   by every page (currently: the login screen and the main Employee Manager
+   page). Keeping these in one file means both pages always agree on the same
+   color palette instead of drifting out of sync. */
+
+* {
+    box-sizing: border-box;
+}
+
+/* ---------- THEME VARIABLES ---------- */
+body.dark {
+    --bg: #0f1115;
+    --card: #161a22;
+    --table: #1c2230;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --accent: #ff8c00;
+    --danger: #e5533d;
+    --input-bg: #0f131b;
+    --input-border: #262c3a;
+}
+
+body.light {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --table: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #ff8c00;
+    --danger: #dc3545;
+    --input-bg: transparent;
+    --input-border: rgba(0,0,0,0.15);
+}
+
+/* ---------- BASE ---------- */
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* ---------- ERROR BOX ---------- */
+.error-box {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(229, 83, 61, 0.12);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    display: none;
+    font-size: 14px;
+}

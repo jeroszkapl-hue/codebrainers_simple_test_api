@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Extracted the frontend (login screen + main page) out of `main.py`'s embedded HTML/CSS/JS strings into real files under `static/` (`login.html`, `index.html`, `css/theme.css`, `css/login.css`, `css/app.css`, `js/theme.js`, `js/auth.js`, `js/login.js`, `js/app.js`). `main.py` shrank from ~1250 lines to ~230. Theme variables and auth/token helpers are now shared in one place instead of duplicated between pages.
+- `main.py` now mounts `/static` via `StaticFiles` and serves `/` and `/login` with `FileResponse`.
+- Updated the macOS/Windows PyInstaller build steps in CI to bundle the new `static/` folder (`--add-data`) and to smoke-test `/`, `/login`, and a static asset in addition to `/health`, so a missing frontend asset in a packaged build would be caught automatically.
+
 ## [1.3.0]
 
 ### Added
