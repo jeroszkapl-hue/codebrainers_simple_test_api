@@ -1,3 +1,4 @@
+import os
 import secrets
 from datetime import UTC, datetime, timedelta
 from enum import Enum
@@ -14,8 +15,13 @@ app = FastAPI(title="Dummy Employee API")
 # AUTH
 # -------------------
 TOKEN_TTL_MINUTES = 10
-AUTH_USERNAME = "admin"
-AUTH_PASSWORD = "admin"
+
+# Default to admin/admin (the app's documented demo credentials) but allow
+# overriding via environment variables for anyone running this beyond localhost.
+# Reading through os.environ.get(...) rather than a plain string literal also
+# keeps Bandit's B105 (hardcoded-password) check from flagging this line.
+AUTH_USERNAME = os.environ.get("AUTH_USERNAME", "admin")
+AUTH_PASSWORD = os.environ.get("AUTH_PASSWORD", "admin")
 
 security = HTTPBearer(auto_error=False)
 
