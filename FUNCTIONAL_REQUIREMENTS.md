@@ -284,14 +284,22 @@ Walidacja danych powinna być realizowana:
 
 ## 12.4 Obsługiwane endpointy
 
-| Metoda HTTP | Endpoint | Opis | Kod sukcesu |
-|---|---|---|---|
-| GET | `/health` | Healthcheck API | 200 |
-| GET | `/api/employees` | Pobranie listy pracowników | 200 |
-| POST | `/api/employees` | Dodanie pracownika | 200 |
-| PUT | `/api/employees/{id}` | Aktualizacja pracownika | 200 (404 jeśli `id` nie istnieje) |
-| DELETE | `/api/employees/{id}` | Usunięcie pracownika | 200 (404 jeśli `id` nie istnieje) |
-| POST | `/api/employees/reset` | Usunięcie wszystkich pracowników i zresetowanie licznika ID | 200 |
+| Metoda HTTP | Endpoint | Opis | Kod sukcesu | Autoryzacja |
+|---|---|---|---|---|
+| GET | `/health` | Healthcheck API | 200 | Brak |
+| POST | `/api/login` | Logowanie (`admin`/`admin`), zwraca bearer token ważny 10 minut | 200 (401 przy błędnych danych) | Brak |
+| GET | `/api/employees` | Pobranie listy pracowników | 200 (401 bez tokenu) | Bearer |
+| POST | `/api/employees` | Dodanie pracownika | 200 (401 bez tokenu) | Bearer |
+| PUT | `/api/employees/{id}` | Aktualizacja pracownika | 200 (404 jeśli `id` nie istnieje, 401 bez tokenu) | Bearer |
+| DELETE | `/api/employees/{id}` | Usunięcie pracownika | 200 (404 jeśli `id` nie istnieje, 401 bez tokenu) | Bearer |
+| POST | `/api/employees/reset` | Usunięcie wszystkich pracowników i zresetowanie licznika ID | 200 (401 bez tokenu) | Bearer |
+
+## 12.5 Autoryzacja
+
+* Logowanie odbywa się na stronie `/login` (formularz username/password).
+* Po poprawnym zalogowaniu token bearer jest zapisywany w `localStorage` przeglądarki i dołączany do każdego żądania API.
+* Token wygasa po 10 minutach — kolejne żądania z wygasłym lub nieprawidłowym tokenem otrzymują `401`, a użytkownik jest przekierowywany na `/login`.
+* Endpoint `/health` oraz `/api/login` nie wymagają autoryzacji.
 
 # 13. Wymagania UX/UI
 

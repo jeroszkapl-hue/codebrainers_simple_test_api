@@ -1,10 +1,75 @@
+import secrets
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field, field_validator
 
 app = FastAPI(title="Dummy Employee API")
+
+
+# -------------------
+# AUTH
+# -------------------
+TOKEN_TTL_MINUTES = 10
+AUTH_USERNAME = "admin"
+AUTH_PASSWORD = "admin"
+
+security = HTTPBearer(auto_error=False)
+
+# token -> expiry (UTC)
+active_tokens: dict[str, datetime] = {}
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+def issue_token() -> TokenResponse:
+    token = secrets.token_urlsafe(32)
+    active_tokens[token] = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_TTL_MINUTES)
+    return TokenResponse(access_token=token, expires_in=TOKEN_TTL_MINUTES * 60)
+
+
+def verify_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> str:
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = credentials.credentials
+    expiry = active_tokens.get(token)
+
+    if expiry is None or datetime.now(timezone.utc) > expiry:
+        active_tokens.pop(token, None)
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return token
+
+
+@app.post("/api/login", response_model=TokenResponse)
+def login(credentials: LoginRequest):
+    if credentials.username != AUTH_USERNAME or credentials.password != AUTH_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    return issue_token()
 
 
 # -------------------
@@ -70,12 +135,12 @@ def health():
 
 
 @app.get("/api/employees", response_model=list[EmployeeResponse])
-def get_employees():
+def get_employees(_: str = Depends(verify_token)):
     return employees
 
 
 @app.post("/api/employees", response_model=EmployeeResponse)
-def add_employee(employee: Employee):
+def add_employee(employee: Employee, _: str = Depends(verify_token)):
     global current_id
 
     emp = EmployeeResponse(id=current_id, **employee.model_dump())
@@ -87,7 +152,7 @@ def add_employee(employee: Employee):
 
 
 @app.put("/api/employees/{emp_id}", response_model=EmployeeResponse)
-def update_employee(emp_id: int, employee: Employee):
+def update_employee(emp_id: int, employee: Employee, _: str = Depends(verify_token)):
 
     for i, emp in enumerate(employees):
         if emp.id == emp_id:
@@ -100,7 +165,7 @@ def update_employee(emp_id: int, employee: Employee):
 
 
 @app.delete("/api/employees/{emp_id}")
-def delete_employee(emp_id: int):
+def delete_employee(emp_id: int, _: str = Depends(verify_token)):
 
     for emp in employees:
         if emp.id == emp_id:
@@ -111,13 +176,283 @@ def delete_employee(emp_id: int):
 
 
 @app.post("/api/employees/reset")
-def reset_employees():
+def reset_employees(_: str = Depends(verify_token)):
     global current_id
 
     employees.clear()
     current_id = 1
 
     return {"status": "reset"}
+
+
+# -------------------
+# LOGIN UI
+# -------------------
+@app.get("/login", response_class=HTMLResponse)
+def login_ui():
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login - Employee Manager</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+/* ---------- THEME VARIABLES ---------- */
+body.dark {
+    --bg: #0f1115;
+    --card: #161a22;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --accent: #ff8c00;
+    --danger: #e5533d;
+    --input-bg: #0f131b;
+    --input-border: #262c3a;
+}
+
+body.light {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #ff8c00;
+    --danger: #dc3545;
+    --input-bg: transparent;
+    --input-border: rgba(0,0,0,0.15);
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+.login-card {
+    position: relative;
+    background: var(--card);
+    padding: 34px;
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    width: 340px;
+    max-width: 90vw;
+}
+
+.theme-toggle {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    width: auto;
+}
+
+.theme-toggle:hover {
+    transform: translateY(-2px);
+}
+
+.logo {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: inline-block;
+    margin-bottom: 22px;
+}
+
+.logo span {
+    color: var(--accent);
+}
+
+h1 {
+    font-size: 20px;
+    margin: 0 0 20px;
+}
+
+label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+input {
+    width: 100%;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text);
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+}
+
+input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+button[type="submit"] {
+    width: 100%;
+    padding: 12px 18px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--accent);
+    color: #1a1a1a;
+    transition: 0.2s ease;
+}
+
+button[type="submit"]:hover {
+    transform: translateY(-2px);
+}
+
+.error-box {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(229, 83, 61, 0.12);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    display: none;
+    font-size: 14px;
+}
+
+</style>
+</head>
+
+<body class="dark">
+
+<div class="login-card">
+
+    <button type="button" class="theme-toggle" onclick="toggleTheme()">
+        🌗 Theme
+    </button>
+
+    <div class="logo"><span>&lt;/&gt;</span> EmployeeManager</div>
+
+    <h1>Sign in</h1>
+
+    <form id="loginForm">
+        <label for="username">Username</label>
+        <input id="username" autocomplete="username" autofocus>
+
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password">
+
+        <button type="submit">Sign in</button>
+    </form>
+
+    <div id="errorBox" class="error-box"></div>
+
+</div>
+
+<script>
+
+// ---------- THEME ----------
+function toggleTheme() {
+
+    const body = document.body;
+
+    const newTheme =
+        body.classList.contains('dark')
+        ? 'light'
+        : 'dark';
+
+    body.className = newTheme;
+
+    localStorage.setItem('theme', newTheme);
+}
+
+(function initTheme() {
+
+    const saved = localStorage.getItem('theme');
+
+    if (saved) {
+        document.body.className = saved;
+    }
+
+})();
+
+function showError(message) {
+    const box = document.getElementById('errorBox');
+    box.innerText = message;
+    box.style.display = 'block';
+}
+
+function clearError() {
+    const box = document.getElementById('errorBox');
+    box.innerText = '';
+    box.style.display = 'none';
+}
+
+// If already logged in with a valid token, skip the login screen.
+(function redirectIfAuthenticated() {
+    const expiresAt = Number(localStorage.getItem('token_expires_at') || 0);
+
+    if (localStorage.getItem('token') && Date.now() < expiresAt) {
+        window.location.href = '/';
+    }
+})();
+
+document.getElementById('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    clearError();
+
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    let res;
+
+    try {
+        res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+    } catch (err) {
+        showError('Unable to reach the server');
+        return;
+    }
+
+    if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        showError(error.detail || 'Invalid username or password');
+        return;
+    }
+
+    const data = await res.json();
+
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('token_expires_at', Date.now() + data.expires_in * 1000);
+
+    window.location.href = '/';
+});
+
+</script>
+
+</body>
+</html>
+"""
 
 
 # -------------------
@@ -466,6 +801,10 @@ tbody tr:hover {
         <button class="toggle" onclick="toggleTheme()">
             🌗 Theme
         </button>
+
+        <button class="toggle btn-reset" onclick="logout()">
+            🚪 Logout
+        </button>
     </div>
 </div>
 
@@ -556,8 +895,60 @@ tbody tr:hover {
 
 <script>
 
+// ---------- AUTH ----------
+function getToken() {
+    return localStorage.getItem('token');
+}
+
+function isTokenValid() {
+    const expiresAt = Number(localStorage.getItem('token_expires_at') || 0);
+    return Boolean(getToken()) && Date.now() < expiresAt;
+}
+
+function clearToken() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('token_expires_at');
+}
+
+function goToLogin() {
+    clearToken();
+    window.location.href = '/login';
+}
+
+function logout() {
+    goToLogin();
+}
+
+// Redirect to login immediately if there's no valid session.
+if (!isTokenValid()) {
+    goToLogin();
+}
+
+// Wrapper around fetch that attaches the bearer token and redirects to
+// the login screen if the server reports the session is no longer valid.
+async function apiFetch(url, options = {}) {
+
+    if (!isTokenValid()) {
+        goToLogin();
+        return Promise.reject(new Error('Not authenticated'));
+    }
+
+    const headers = Object.assign({}, options.headers, {
+        Authorization: `Bearer ${getToken()}`
+    });
+
+    const res = await fetch(url, Object.assign({}, options, { headers }));
+
+    if (res.status === 401) {
+        goToLogin();
+        return Promise.reject(new Error('Session expired'));
+    }
+
+    return res;
+}
+
 // ----- META INFO -----
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.3.0";
 
 document.getElementById('year').innerText = new Date().getFullYear();
 document.getElementById('version').innerText = APP_VERSION;
@@ -648,7 +1039,7 @@ function getFormData() {
 
 async function loadEmployees() {
 
-    const res = await fetch('/api/employees');
+    const res = await apiFetch('/api/employees');
 
     const data = await res.json();
 
@@ -729,7 +1120,7 @@ async function addEmployee() {
 
     clearError();
 
-    const res = await fetch('/api/employees', {
+    const res = await apiFetch('/api/employees', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -751,7 +1142,7 @@ async function updateEmployee() {
 
     clearError();
 
-    const res = await fetch(`/api/employees/${editId}`, {
+    const res = await apiFetch(`/api/employees/${editId}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json'
@@ -773,7 +1164,7 @@ async function deleteEmployee(id) {
 
     clearError();
 
-    const res = await fetch(`/api/employees/${id}`, {
+    const res = await apiFetch(`/api/employees/${id}`, {
         method: 'DELETE'
     });
 
@@ -799,7 +1190,7 @@ async function confirmReset() {
 
     clearError();
 
-    const res = await fetch('/api/employees/reset', {
+    const res = await apiFetch('/api/employees/reset', {
         method: 'POST'
     });
 
