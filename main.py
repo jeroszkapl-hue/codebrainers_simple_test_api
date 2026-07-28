@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -19,6 +19,10 @@ AUTH_PASSWORD = "admin"
 
 security = HTTPBearer(auto_error=False)
 
+# Module-level singleton so the Depends(...) call isn't performed inline in the
+# function signature default (ruff B008) — see verify_token below.
+bearer_dependency = Depends(security)
+
 # token -> expiry (UTC)
 active_tokens: dict[str, datetime] = {}
 
@@ -36,12 +40,12 @@ class TokenResponse(BaseModel):
 
 def issue_token() -> TokenResponse:
     token = secrets.token_urlsafe(32)
-    active_tokens[token] = datetime.now(timezone.utc) + timedelta(minutes=TOKEN_TTL_MINUTES)
+    active_tokens[token] = datetime.now(UTC) + timedelta(minutes=TOKEN_TTL_MINUTES)
     return TokenResponse(access_token=token, expires_in=TOKEN_TTL_MINUTES * 60)
 
 
 def verify_token(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = bearer_dependency,
 ) -> str:
     if credentials is None:
         raise HTTPException(
@@ -53,7 +57,7 @@ def verify_token(
     token = credentials.credentials
     expiry = active_tokens.get(token)
 
-    if expiry is None or datetime.now(timezone.utc) > expiry:
+    if expiry is None or datetime.now(UTC) > expiry:
         active_tokens.pop(token, None)
         raise HTTPException(
             status_code=401,

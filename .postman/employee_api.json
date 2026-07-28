@@ -5,6 +5,16 @@
     "description": "CRUD collection for the Dummy Employee API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
   "variable": [
     {
       "key": "baseUrl",
@@ -15,12 +25,20 @@
       "key": "employeeId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
       "name": "Health Check",
       "request": {
+        "auth": {
+          "type": "noauth"
+        },
         "method": "GET",
         "header": [],
         "url": {
@@ -35,12 +53,131 @@
           "script": {
             "exec": [
               "pm.test('Status code is 200', function () {",
-              "    pm.giponse.to.have.status(200);",
+              "    pm.response.to.have.status(200);",
               "});",
               "",
               "pm.test('Response body contains status ok', function () {",
               "    const json = pm.response.json();",
               "    pm.expect(json.status).to.eql('ok');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Login",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response contains a bearer token', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('access_token');",
+              "    pm.expect(json.token_type).to.eql('bearer');",
+              "    pm.expect(json.expires_in).to.eql(600);",
+              "});",
+              "",
+              "// Save the token so subsequent requests (which use collection-level",
+              "// bearer auth) are authenticated automatically.",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('authToken', json.access_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Login - Invalid Credentials",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrong-password\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 401 for invalid credentials', function () {",
+              "    pm.response.to.have.status(401);",
+              "});",
+              "",
+              "pm.test('Response contains error detail', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('detail');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "GET All Employees - Unauthorized",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/employees",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "employees"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 401 without a bearer token', function () {",
+              "    pm.response.to.have.status(401);",
               "});"
             ],
             "type": "text/javascript"
