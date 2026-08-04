@@ -288,6 +288,7 @@ Walidacja danych powinna być realizowana:
 |---|---|---|---|---|
 | GET | `/health` | Healthcheck API | 200 | Brak |
 | POST | `/api/login` | Logowanie (`admin`/`admin`), zwraca bearer token ważny 10 minut | 200 (401 przy błędnych danych) | Brak |
+| POST | `/api/logout` | Wylogowanie — unieważnia token po stronie serwera | 200 (401 bez tokenu) | Bearer |
 | GET | `/api/employees` | Pobranie listy pracowników | 200 (401 bez tokenu) | Bearer |
 | POST | `/api/employees` | Dodanie pracownika | 200 (401 bez tokenu) | Bearer |
 | PUT | `/api/employees/{id}` | Aktualizacja pracownika | 200 (404 jeśli `id` nie istnieje, 401 bez tokenu) | Bearer |
@@ -299,6 +300,7 @@ Walidacja danych powinna być realizowana:
 * Logowanie odbywa się na stronie `/login` (formularz username/password).
 * Po poprawnym zalogowaniu token bearer jest zapisywany w `localStorage` przeglądarki i dołączany do każdego żądania API.
 * Token wygasa po 10 minutach — kolejne żądania z wygasłym lub nieprawidłowym tokenem otrzymują `401`, a użytkownik jest przekierowywany na `/login`.
+* Kliknięcie `Logout` wywołuje `POST /api/logout`, który unieważnia token po stronie serwera (usuwa go z magazynu tokenów), a dopiero potem czyści `localStorage` i przekierowuje na `/login`. Błąd sieci przy tym wywołaniu nie blokuje wylogowania lokalnego.
 * Endpoint `/health` oraz `/api/login` nie wymagają autoryzacji.
 
 # 13. Wymagania UX/UI

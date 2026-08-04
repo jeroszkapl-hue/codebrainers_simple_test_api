@@ -21,7 +21,23 @@ function goToLogin() {
     window.location.href = '/login';
 }
 
-function logout() {
+async function logout() {
+    const token = getToken();
+
+    if (token) {
+        // Best-effort: revoke the token server-side so it can't be reused
+        // even if it leaked before logout. A network failure here shouldn't
+        // block the user from logging out locally.
+        try {
+            await fetch('/api/logout', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+        } catch (err) {
+            // Ignored — falls through to the local logout below regardless.
+        }
+    }
+
     goToLogin();
 }
 

@@ -18,6 +18,8 @@ in-memory employee store and token store are reset before each test.
 | FT-AUTH-04 | Login with missing field returns validation error | 1. `POST /api/login` with `{"username": "admin"}` (no `password`) | `422` | `test_ft_auth_04_login_with_missing_fields_returns_validation_error` |
 | FT-AUTH-05 | Protected endpoint without token rejected | 1. `GET /api/employees` with no `Authorization` header | `401` | `test_ft_auth_05_protected_endpoint_without_token_rejected` |
 | FT-AUTH-06 | Protected endpoint with garbage token rejected | 1. `GET /api/employees` with `Authorization: Bearer not-a-real-token` | `401` | `test_ft_auth_06_protected_endpoint_with_garbage_token_rejected` |
+| FT-AUTH-07 | Logout invalidates the token | 1. Log in. 2. `POST /api/logout` with the token. 3. `GET /api/employees` with the same (now revoked) token | Step 2: `200`, `{"status": "logged_out"}`. Step 3: `401` | `test_ft_auth_07_logout_invalidates_the_token` |
+| FT-AUTH-08 | Logout without token rejected | 1. `POST /api/logout` with no `Authorization` header | `401` | `test_ft_auth_08_logout_without_token_rejected` |
 
 ## Health check & static assets (`test_health_and_static.py`)
 
