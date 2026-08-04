@@ -50,3 +50,20 @@ def test_ft_auth_06_protected_endpoint_with_garbage_token_rejected(api):
     )
 
     assert response.status_code == 401
+
+
+def test_ft_auth_07_logout_invalidates_the_token(api, auth_headers):
+    """FT-AUTH-07: a token no longer works against protected endpoints after logout."""
+    logout_response = api.post("/api/logout", headers=auth_headers)
+    assert logout_response.status_code == 200
+    assert logout_response.json() == {"status": "logged_out"}
+
+    response = api.get("/api/employees", headers=auth_headers)
+    assert response.status_code == 401
+
+
+def test_ft_auth_08_logout_without_token_rejected(api):
+    """FT-AUTH-08: logout itself requires a valid bearer token."""
+    response = api.post("/api/logout")
+
+    assert response.status_code == 401

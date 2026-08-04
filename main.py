@@ -98,6 +98,15 @@ def login(credentials: LoginRequest):
     return issue_token()
 
 
+@app.post("/api/logout")
+def logout(token: str = Depends(verify_token)):
+    # Revoke the token server-side so it can't be replayed after the user
+    # has logged out, instead of relying solely on the client discarding it
+    # from localStorage (which the frontend also does — see auth.js).
+    active_tokens.pop(token, None)
+    return {"status": "logged_out"}
+
+
 # -------------------
 # ENUMS
 # -------------------
