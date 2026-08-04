@@ -57,7 +57,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: pytest
-        run: pytest
+        # tests/selenium is excluded here: it drives a real headless Chrome
+        # browser, which this job doesn't provision. Run it separately/
+        # locally, or add a dedicated job with Chrome available if it
+        # should run in CI too.
+        run: pytest --ignore=tests/selenium
 
   security:
     name: Security (Bandit + pip-audit)
