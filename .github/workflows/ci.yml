@@ -56,12 +56,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: pytest
+      - name: pytest (with coverage gate)
         # tests/selenium is excluded here: it drives a real headless Chrome
         # browser, which this job doesn't provision. Run it separately/
         # locally, or add a dedicated job with Chrome available if it
         # should run in CI too.
-        run: pytest --ignore=tests/selenium
+        #
+        # Coverage is scoped to main.py (the app logic) via
+        # [tool.coverage.run] source in pyproject.toml; run.py is the
+        # PyInstaller/uvicorn entrypoint and is exercised by the
+        # build-macos/build-windows smoke tests instead. The 90% floor
+        # (see [tool.coverage.report] fail_under) sits a few points below
+        # the ~98% currently achieved, leaving headroom before this needs
+        # revisiting.
+        run: pytest --ignore=tests/selenium --cov=main --cov-report=term-missing
 
   security:
     name: Security (Bandit + pip-audit)
