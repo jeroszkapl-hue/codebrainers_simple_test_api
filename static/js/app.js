@@ -8,7 +8,7 @@ if (!isTokenValid()) {
 }
 
 // ----- META INFO -----
-const APP_VERSION = "1.4.0";
+const APP_VERSION = "1.5.0";
 
 document.getElementById('year').innerText = new Date().getFullYear();
 document.getElementById('version').innerText = APP_VERSION;

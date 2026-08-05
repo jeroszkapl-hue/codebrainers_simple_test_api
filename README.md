@@ -41,6 +41,21 @@ Run the test suite with pytest:
 pytest
 ```
 
+# Performance Tests
+A simple Locust load test lives in `tests/locust/locustfile.py` (not part of the pytest suite). It logs in, then exercises the employee list/create/update/delete endpoints with weighted tasks, re-logging in automatically if the 10-minute token expires mid-run.
+
+```bash
+pip install -r tests/locust/requirements.txt   # separate from requirements.txt — Locust's web UI pulls in Flask/gevent
+python run.py                                  # in one terminal
+
+# Interactive web UI at http://localhost:8089
+locust -f tests/locust/locustfile.py --host http://127.0.0.1:8000
+
+# Or headless, e.g. a 10-user/1-minute smoke run
+locust -f tests/locust/locustfile.py --host http://127.0.0.1:8000 \
+    --headless --users 10 --spawn-rate 2 --run-time 1m
+```
+
 # Functional Requirements
 Available [here](FUNCTIONAL_REQUIREMENTS.md)
 
