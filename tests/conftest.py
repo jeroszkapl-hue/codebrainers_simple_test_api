@@ -28,8 +28,8 @@ os.environ.setdefault(
     os.path.join(tempfile.mkdtemp(prefix="employee-api-tests-"), "test_employees.db"),
 )
 
-import main  # noqa: E402
-from main import app  # noqa: E402
+import main
+from main import app
 
 
 def _free_port() -> int:
