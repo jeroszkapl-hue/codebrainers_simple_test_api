@@ -2,6 +2,37 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.6.0]
+
+### Added
+- `db.py` — SQLite-backed persistent storage for employees, replacing the
+  in-memory list. Data now survives an app restart. `active_tokens` stays
+  in-memory on purpose (short-lived session state, not data anyone expects
+  to survive a restart). `current_id` is seeded from `MAX(id)` on disk at
+  startup so a restart can't hand out a colliding id. Uses a fresh
+  connection per call (FastAPI runs these endpoints in a threadpool) plus
+  WAL mode + a busy_timeout, and a `threading.Lock` around the
+  id-generation-and-write path — which also fixes a pre-existing race
+  condition where two concurrent `POST /api/employees` could read the same
+  `current_id`.
+- `DB_PATH` env var to override where the database file lives (mirrors the
+  existing `AUTH_USERNAME`/`AUTH_PASSWORD` override pattern). Defaults to
+  next to `main.py` in dev, or next to the executable in a packaged
+  PyInstaller build (deliberately not `sys._MEIPASS`, which is a fresh temp
+  extraction dir every launch and would silently discard the database).
+- `--hidden-import=sqlite3` and an end-to-end login → create → list smoke
+  check (not just static routes) in both PyInstaller build jobs in CI, so a
+  packaging issue with the new storage layer would actually be caught.
+
+### Changed
+- `tests/conftest.py` points `DB_PATH` at an isolated, throwaway temp file
+  for the whole test session (set before `main`/`db` are imported anywhere,
+  including by `tests/unit`), so pytest runs never read or write a real
+  `employees.db` a developer might have from running `python run.py`
+  locally. Its `_reset_state` fixture now resets storage via
+  `main._reset_storage()` instead of poking `main.employees` directly.
+- Bumped app version to `1.6.0`.
+
 ## [1.5.0]
 
 ### Added

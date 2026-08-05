@@ -271,10 +271,16 @@ Frontend powinien:
 Backend powinien:
 - być napisany w FastAPI,
 - wykorzystywać Pydantic do walidacji danych,
-- przechowywać dane w pamięci aplikacji (in-memory storage),
+- przechowywać dane pracowników trwale w bazie SQLite (`db.py`) — dane
+  przetrwają restart aplikacji; ścieżkę pliku bazy można nadpisać zmienną
+  środowiskową `DB_PATH`,
 - obsługiwać REST API,
 - zwracać odpowiedzi w formacie JSON,
 - posiadać endpoint healthcheck.
+
+Tokeny sesji (`active_tokens`) pozostają wyłącznie w pamięci procesu — to
+świadoma decyzja: token ma 10-minutowy TTL i nie powinien przetrwać
+restartu serwera.
 
 ## 12.3 Walidacja danych
 

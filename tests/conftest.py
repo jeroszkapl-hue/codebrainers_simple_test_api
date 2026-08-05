@@ -6,13 +6,27 @@ share one live server for the whole session instead of each spinning up
 their own.
 """
 
+import os
 import socket
+import tempfile
 import threading
 import time
 
 import httpx
 import pytest
 import uvicorn
+
+# Point the app at an isolated, throwaway SQLite file for the whole test
+# session, instead of the real employees.db a developer might have sitting
+# next to the app from running `python run.py` locally. Must happen before
+# `main` (which imports `db` and resolves DB_PATH at import time) is
+# imported anywhere below — including by tests/unit, which imports it
+# directly. setdefault() still lets CI or a developer override this
+# explicitly.
+os.environ.setdefault(
+    "DB_PATH",
+    os.path.join(tempfile.mkdtemp(prefix="employee-api-tests-"), "test_employees.db"),
+)
 
 import main
 from main import app
@@ -53,7 +67,7 @@ def live_server():
 
 @pytest.fixture(autouse=True)
 def _reset_state():
-    """Reset in-memory employees/tokens/id-counter before and after every test.
+    """Reset employees (SQLite, via db.py) and in-memory tokens before and after every test.
 
     The live server runs in a background thread of this same process, so
     the module-level state in main.py can be reset directly. This also
@@ -63,9 +77,8 @@ def _reset_state():
     """
 
     def reset():
-        main.employees.clear()
+        main._reset_storage()
         main.active_tokens.clear()
-        main.current_id = 1
 
     reset()
     yield

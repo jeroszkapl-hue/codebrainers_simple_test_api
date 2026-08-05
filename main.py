@@ -1,6 +1,7 @@
 import os
 import secrets
 import sys
+import threading
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -10,6 +11,8 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
+
+import db
 
 app = FastAPI(title="Dummy Employee API")
 
@@ -155,10 +158,41 @@ class EmployeeResponse(Employee):
 
 
 # -------------------
-# In-memory storage
+# Persistent storage (SQLite — see db.py)
 # -------------------
-employees: list[EmployeeResponse] = []
-current_id = 1
+# Employees survive an app restart; active_tokens above intentionally does
+# not. current_id is seeded from whatever's already on disk (not always 1)
+# so a restart can't hand out an id that collides with existing data.
+db.init_db()
+current_id = db.next_id()
+
+# Serializes the id-generation-and-write critical section across threads
+# (FastAPI runs these sync endpoints in a threadpool) — otherwise two
+# concurrent POSTs could read the same current_id and collide.
+_storage_lock = threading.Lock()
+
+
+def _employee_row(employee: Employee) -> dict:
+    return {
+        "name": employee.name,
+        "salary": employee.salary,
+        "age": employee.age,
+        "position": employee.position.value,
+        "on_leave": employee.on_leave,
+    }
+
+
+def _reset_storage() -> None:
+    """Delete all employees and restart the id counter at 1.
+
+    Shared by the /reset endpoint and the test suite's state-reset fixture
+    (tests/conftest.py), so both go through the same code path.
+    """
+    global current_id
+
+    with _storage_lock:
+        db.reset_employees()
+        current_id = 1
 
 
 # -------------------
@@ -171,52 +205,46 @@ def health():
 
 @app.get("/api/employees", response_model=list[EmployeeResponse])
 def get_employees(_: str = Depends(verify_token)):
-    return employees
+    return [EmployeeResponse(**row) for row in db.list_employees()]
 
 
 @app.post("/api/employees", response_model=EmployeeResponse)
 def add_employee(employee: Employee, _: str = Depends(verify_token)):
     global current_id
 
-    emp = EmployeeResponse(id=current_id, **employee.model_dump())
+    with _storage_lock:
+        emp_id = current_id
+        row = db.insert_employee(emp_id, _employee_row(employee))
+        current_id += 1
 
-    employees.append(emp)
-    current_id += 1
-
-    return emp
+    return EmployeeResponse(**row)
 
 
 @app.put("/api/employees/{emp_id}", response_model=EmployeeResponse)
 def update_employee(emp_id: int, employee: Employee, _: str = Depends(verify_token)):
+    with _storage_lock:
+        row = db.update_employee(emp_id, _employee_row(employee))
 
-    for i, emp in enumerate(employees):
-        if emp.id == emp_id:
-            updated = EmployeeResponse(id=emp_id, **employee.model_dump())
+    if row is None:
+        raise HTTPException(status_code=404, detail="Employee not found")
 
-            employees[i] = updated
-            return updated
-
-    raise HTTPException(status_code=404, detail="Employee not found")
+    return EmployeeResponse(**row)
 
 
 @app.delete("/api/employees/{emp_id}")
 def delete_employee(emp_id: int, _: str = Depends(verify_token)):
+    with _storage_lock:
+        deleted = db.delete_employee(emp_id)
 
-    for emp in employees:
-        if emp.id == emp_id:
-            employees.remove(emp)
-            return {"status": "deleted"}
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Employee not found")
 
-    raise HTTPException(status_code=404, detail="Employee not found")
+    return {"status": "deleted"}
 
 
 @app.post("/api/employees/reset")
 def reset_employees(_: str = Depends(verify_token)):
-    global current_id
-
-    employees.clear()
-    current_id = 1
-
+    _reset_storage()
     return {"status": "reset"}
 
 
