@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.5.0]
+
+### Added
+- `tests/locust/locustfile.py` — a simple Locust load test covering login, list/create/update/delete on `/api/employees`, and `/health` as a latency baseline. Each simulated user re-logs in automatically on a `401` so runs aren't capped at the token's 10-minute TTL.
+- `tests/locust/requirements.txt` — Locust's dependency closure (`Flask`, `gevent`, `python-socketio`, etc., for its web UI), kept out of the top-level `requirements.txt` since nothing else in the project needs it.
+- "Performance Tests" section in `README.md` documenting how to run it (interactive web UI and headless).
+
+### Changed
+- Bumped app version to `1.5.0`.
+
 ## [1.4.0]
 
 ### Added
