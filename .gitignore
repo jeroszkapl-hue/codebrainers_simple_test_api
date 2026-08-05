@@ -60,6 +60,13 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# This app's own SQLite database (see db.py) — a developer's local data,
+# not something that belongs in version control. Includes WAL-mode's
+# sidecar files.
+employees.db
+employees.db-wal
+employees.db-shm
+
 # Flask stuff:
 instance/
 .webassets-cache

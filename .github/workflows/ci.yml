@@ -114,6 +114,7 @@ jobs:
             --add-data "static:static" \
             --hidden-import=anyio._backends._asyncio \
             --hidden-import=anyio._backends._trio \
+            --hidden-import=sqlite3 \
             --collect-all anyio \
             --collect-all fastapi \
             --collect-all uvicorn \
@@ -127,6 +128,20 @@ jobs:
           curl -f http://127.0.0.1:8000/
           curl -f http://127.0.0.1:8000/login
           curl -f http://127.0.0.1:8000/static/css/theme.css
+
+          # Exercise the SQLite-backed employee storage end-to-end — a
+          # packaged build is the one environment where a sqlite3
+          # packaging issue (missing hidden import, wrong DB path
+          # resolution under sys.frozen) would actually surface.
+          TOKEN=$(curl -sf -X POST http://127.0.0.1:8000/api/login \
+            -H "Content-Type: application/json" \
+            -d '{"username": "admin", "password": "admin"}' \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
+          curl -sf -X POST http://127.0.0.1:8000/api/employees \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN" \
+            -d '{"name": "Smoke Test", "salary": 5000, "age": 30, "position": "Mid QA", "on_leave": false}'
+          curl -sf http://127.0.0.1:8000/api/employees -H "Authorization: Bearer $TOKEN" | grep -q "Smoke Test"
       - uses: actions/upload-artifact@v4
         with:
           name: macos-app
@@ -155,6 +170,7 @@ jobs:
             --add-data "static;static" `
             --hidden-import=anyio._backends._asyncio `
             --hidden-import=anyio._backends._trio `
+            --hidden-import=sqlite3 `
             --collect-all anyio `
             --collect-all fastapi `
             --collect-all uvicorn `
@@ -168,6 +184,21 @@ jobs:
           Invoke-WebRequest http://127.0.0.1:8000/ -UseBasicParsing
           Invoke-WebRequest http://127.0.0.1:8000/login -UseBasicParsing
           Invoke-WebRequest http://127.0.0.1:8000/static/css/theme.css -UseBasicParsing
+
+          # Exercise the SQLite-backed employee storage end-to-end — a
+          # packaged build is the one environment where a sqlite3
+          # packaging issue (missing hidden import, wrong DB path
+          # resolution under sys.frozen) would actually surface.
+          $login = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/login `
+              -ContentType "application/json" -Body '{"username": "admin", "password": "admin"}'
+          $headers = @{ Authorization = "Bearer $($login.access_token)" }
+          Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/employees `
+              -ContentType "application/json" -Headers $headers `
+              -Body '{"name": "Smoke Test", "salary": 5000, "age": 30, "position": "Mid QA", "on_leave": false}'
+          $employees = Invoke-RestMethod -Uri http://127.0.0.1:8000/api/employees -Headers $headers
+          if (-not ($employees | Where-Object { $_.name -eq "Smoke Test" })) {
+              throw "Smoke Test employee not found after creation"
+          }
 
       - uses: actions/upload-artifact@v4
         with:
