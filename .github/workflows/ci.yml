@@ -204,3 +204,46 @@ jobs:
         with:
           name: windows-app
           path: dist/run.exe
+
+  tag-release:
+    name: Tag Release
+    needs: [build-macos, build-windows]
+    # Only tag off main — a manual dispatch from a feature branch shouldn't
+    # mint a release tag for a CHANGELOG.md entry that isn't on main yet.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full history + existing tags to check for duplicates
+
+      - name: Read version from the top of CHANGELOG.md
+        id: version
+        run: |
+          VERSION=$(grep -m1 -oP '(?<=^## \[)[0-9]+\.[0-9]+\.[0-9]+(?=\])' CHANGELOG.md)
+          if [ -z "$VERSION" ]; then
+            echo "Could not find a '## [X.Y.Z]' heading at the top of CHANGELOG.md" >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Tag and push, if this version isn't tagged yet
+        env:
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already exists — nothing to do (CHANGELOG.md's top entry wasn't bumped since the last run)."
+            exit 0
+          fi
+
+          # Pull this version's release notes straight out of CHANGELOG.md:
+          # everything from its "## [X.Y.Z]" heading up to (not including)
+          # the next one, so the tag message always matches the changelog.
+          NOTES=$(awk '/^## \[/{if (found) exit; found=1; next} found' CHANGELOG.md)
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG" -m "$NOTES"
+          git push origin "$TAG"
