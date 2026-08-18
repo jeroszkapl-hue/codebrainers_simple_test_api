@@ -132,7 +132,7 @@ class Employee(BaseModel):
     )
 
     salary: int = Field(..., ge=1, le=200000)
-    age: int = Field(..., ge=18, le=65)
+    age: int = Field(..., ge=17, le=65)
 
     position: PositionEnum
 
