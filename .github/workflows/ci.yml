@@ -230,6 +230,41 @@ jobs:
       - name: pip-audit
         run: pip-audit -r requirements.txt
 
+  complexity:
+    name: Code complexity (McCabe)
+    # Informational only — not part of `needs` for any build job below, so a
+    # high-complexity function doesn't block a release. It's here so
+    # complexity trends are visible on every run instead of only when
+    # someone thinks to run radon locally.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Radon
+        run: pip install radon
+
+      - name: Cyclomatic complexity (McCabe) — radon cc
+        # -s: show the raw McCabe score next to each A-F letter grade.
+        # -a: print the average complexity per file.
+        # --total-average: add one repo-wide average at the end.
+        # .venv is excluded — it's vendored dependency code, not ours.
+        run: radon cc . -s -a --total-average -e ".venv/*"
+
+      - name: Add to job summary
+        # Same command again, piped into the Actions run's summary page so
+        # the report is one click away instead of buried in a step log.
+        run: |
+          {
+            echo "### Cyclomatic complexity (McCabe) — radon cc"
+            echo '```'
+            radon cc . -s -a --total-average -e ".venv/*"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   build-macos:
     name: Build macOS
     needs:
