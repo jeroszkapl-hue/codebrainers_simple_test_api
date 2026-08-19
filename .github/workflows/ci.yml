@@ -294,6 +294,84 @@ jobs:
           name: macos-app
           path: dist/run.app
 
+  build-linux:
+    name: Build Linux
+    needs:
+      [
+        lint,
+        typecheck,
+        test-unit,
+        test-integration,
+        test-functional,
+        selenium-gate,
+        coverage,
+        security,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install fastapi uvicorn pyinstaller
+
+      - name: Install Xvfb
+        # run.py's __main__ opens a real tkinter status window (see
+        # show_window() in run.py) — it's not just a headless server, so the
+        # packaged binary needs an X display to start at all, even for this
+        # smoke test. ubuntu-latest doesn't have one by default; Xvfb
+        # provides a virtual framebuffer display so tkinter has somewhere to
+        # draw. macOS/Windows runners don't need this — they already have a
+        # windowing session (Aqua / the interactive desktop).
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Build binary
+        # --onefile, like the Windows build — Linux has no app-bundle
+        # convention the way macOS does. No --windowed here: that flag only
+        # suppresses a console window on Windows/macOS, PyInstaller ignores
+        # it on Linux.
+        run: |
+          pyinstaller run.py \
+            --name run \
+            --onefile \
+            --add-data "static:static" \
+            --hidden-import=anyio._backends._asyncio \
+            --hidden-import=anyio._backends._trio \
+            --hidden-import=sqlite3 \
+            --collect-all anyio \
+            --collect-all fastapi \
+            --collect-all uvicorn \
+            --collect-all starlette
+      - name: Test app start
+        run: |
+          chmod +x dist/run
+          xvfb-run -a dist/run &
+          sleep 6
+          curl -f http://127.0.0.1:8000/health
+          curl -f http://127.0.0.1:8000/
+          curl -f http://127.0.0.1:8000/login
+          curl -f http://127.0.0.1:8000/static/css/theme.css
+
+          # Exercise the SQLite-backed employee storage end-to-end — a
+          # packaged build is the one environment where a sqlite3
+          # packaging issue (missing hidden import, wrong DB path
+          # resolution under sys.frozen) would actually surface.
+          TOKEN=$(curl -sf -X POST http://127.0.0.1:8000/api/login \
+            -H "Content-Type: application/json" \
+            -d '{"username": "admin", "password": "admin"}' \
+            | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
+          curl -sf -X POST http://127.0.0.1:8000/api/employees \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $TOKEN" \
+            -d '{"name": "Smoke Test", "salary": 5000, "age": 30, "position": "Mid QA", "on_leave": false}'
+          curl -sf http://127.0.0.1:8000/api/employees -H "Authorization: Bearer $TOKEN" | grep -q "Smoke Test"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-app
+          path: dist/run
+
   build-windows:
     name: Build Windows
     needs:
@@ -364,7 +442,7 @@ jobs:
 
   tag-release:
     name: Tag Release
-    needs: [build-macos, build-windows]
+    needs: [build-macos, build-linux, build-windows]
     # Only tag off main — a manual dispatch from a feature branch shouldn't
     # mint a release tag for a CHANGELOG.md entry that isn't on main yet.
     if: github.ref == 'refs/heads/main'
