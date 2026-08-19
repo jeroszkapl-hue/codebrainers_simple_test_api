@@ -317,6 +317,16 @@ jobs:
 
       - run: pip install fastapi uvicorn pyinstaller
 
+      - name: Install Xvfb
+        # run.py's __main__ opens a real tkinter status window (see
+        # show_window() in run.py) — it's not just a headless server, so the
+        # packaged binary needs an X display to start at all, even for this
+        # smoke test. ubuntu-latest doesn't have one by default; Xvfb
+        # provides a virtual framebuffer display so tkinter has somewhere to
+        # draw. macOS/Windows runners don't need this — they already have a
+        # windowing session (Aqua / the interactive desktop).
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Build binary
         # --onefile, like the Windows build — Linux has no app-bundle
         # convention the way macOS does. No --windowed here: that flag only
@@ -337,7 +347,7 @@ jobs:
       - name: Test app start
         run: |
           chmod +x dist/run
-          dist/run &
+          xvfb-run -a dist/run &
           sleep 6
           curl -f http://127.0.0.1:8000/health
           curl -f http://127.0.0.1:8000/
