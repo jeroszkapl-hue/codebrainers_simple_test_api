@@ -158,6 +158,18 @@ jobs:
       - name: pytest tests/selenium
         run: pytest tests/selenium
 
+  selenium-gate:
+    name: Selenium gate
+    # A thin pass-through, purely so the Actions graph draws
+    # tests/selenium as its own block (like test-unit/integration/
+    # functional -> coverage) instead of lumping it in with
+    # lint/typecheck/security just because they'd otherwise share the
+    # same direct successors (build-macos/build-windows).
+    needs: [test-selenium]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "tests/selenium passed"
+
   coverage:
     name: Coverage gate
     needs: [test-unit, test-integration, test-functional]
@@ -227,7 +239,7 @@ jobs:
         test-unit,
         test-integration,
         test-functional,
-        test-selenium,
+        selenium-gate,
         coverage,
         security,
       ]
@@ -291,7 +303,7 @@ jobs:
         test-unit,
         test-integration,
         test-functional,
-        test-selenium,
+        selenium-gate,
         coverage,
         security,
       ]

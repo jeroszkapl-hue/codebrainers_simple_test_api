@@ -3,6 +3,7 @@
 See tests/selenium/TEST_PLAN.md for the full test case list with steps.
 """
 
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.select import Select
@@ -56,7 +57,14 @@ def test_sel_emp_02_edit_employee_updates_row(logged_in_driver):
 
     driver.find_element(By.ID, "submitBtn").click()
 
-    WebDriverWait(driver, 5).until(lambda d: "9999" in _employee_rows(d)[0].text)
+    # The table re-renders (DOM nodes get swapped, not just updated) after a
+    # successful edit, so a row fetched by _employee_rows() can go stale
+    # between that fetch and reading .text off it a moment later. Ignoring
+    # StaleElementReferenceException here just makes WebDriverWait retry on
+    # the next poll instead of failing the test on that race.
+    WebDriverWait(
+        driver, 5, ignored_exceptions=(StaleElementReferenceException,)
+    ).until(lambda d: "9999" in _employee_rows(d)[0].text)
 
 
 def test_sel_emp_03_delete_employee_removes_row(logged_in_driver):
