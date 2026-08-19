@@ -42,8 +42,22 @@ jobs:
       - name: mypy
         run: mypy . --ignore-missing-imports
 
-  test:
-    name: Test (pytest)
+  # tests/unit, tests/integration, tests/functional and tests/selenium each
+  # get their own job below so a failure in one test type shows up on its
+  # own line in the checks list instead of being buried in one combined
+  # log, and so they run in parallel. Two directories under tests/ are
+  # intentionally NOT wired in as CI stages:
+  #   - tests/acceptance: Gherkin .feature files with no step definitions
+  #     or runner (see tests/acceptance/README.md) — there's nothing here
+  #     for pytest/behave to execute. It's UAT documentation, checked off
+  #     manually via tests/acceptance/CHECKLIST.md.
+  #   - tests/locust: a load test against a running instance of the app,
+  #     with its own heavy dependency set kept out of requirements.txt on
+  #     purpose (see tests/locust/requirements.txt). It's meant to be run
+  #     deliberately, not on every CI trigger — add a job for it if you
+  #     want a scheduled or on-demand performance stage.
+  test-unit:
+    name: Test (unit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,20 +70,143 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: pytest (with coverage gate)
-        # tests/selenium is excluded here: it drives a real headless Chrome
-        # browser, which this job doesn't provision. Run it separately/
-        # locally, or add a dedicated job with Chrome available if it
-        # should run in CI too.
-        #
+      - name: pytest tests/unit
+        # Coverage data is written per-job (COVERAGE_FILE) and combined in
+        # the coverage job below instead of being gated here — one suite's
+        # slice of main.py isn't representative of overall coverage, so
+        # --cov-report is left empty and no fail_under is enforced yet.
+        env:
+          COVERAGE_FILE: .coverage.unit
+        run: pytest tests/unit --cov=main --cov-report=
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: .coverage.unit
+          include-hidden-files: true
+
+  test-integration:
+    name: Test (integration)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: pytest tests/integration
+        env:
+          COVERAGE_FILE: .coverage.integration
+        run: pytest tests/integration --cov=main --cov-report=
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration
+          path: .coverage.integration
+          include-hidden-files: true
+
+  test-functional:
+    name: Test (functional)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: pytest tests/functional
+        env:
+          COVERAGE_FILE: .coverage.functional
+        run: pytest tests/functional --cov=main --cov-report=
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-functional
+          path: .coverage.functional
+          include-hidden-files: true
+
+  test-selenium:
+    name: Test (Selenium UI)
+    runs-on: ubuntu-latest
+    # Not folded into the coverage gate below: it drives a real headless
+    # Chrome browser rather than exercising main.py's code paths directly,
+    # so its contribution to line coverage isn't meaningful. ubuntu-latest
+    # ships Chrome preinstalled, and Selenium 4's Selenium Manager downloads
+    # a matching chromedriver automatically — see tests/selenium/conftest.py
+    # and tests/selenium/TEST_PLAN.md.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: pytest tests/selenium
+        run: pytest tests/selenium
+
+  selenium-gate:
+    name: Selenium gate
+    # A thin pass-through, purely so the Actions graph draws
+    # tests/selenium as its own block (like test-unit/integration/
+    # functional -> coverage) instead of lumping it in with
+    # lint/typecheck/security just because they'd otherwise share the
+    # same direct successors (build-macos/build-windows).
+    needs: [test-selenium]
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "tests/selenium passed"
+
+  coverage:
+    name: Coverage gate
+    needs: [test-unit, test-integration, test-functional]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - name: Combine per-suite coverage data
+        # coverage combine auto-discovers files matching ".coverage.*" (the
+        # coverage-unit/coverage-integration/coverage-functional artifacts
+        # downloaded above) and merges them into a single .coverage file.
+        run: coverage combine
+
+      - name: Coverage report (90% floor from pyproject.toml)
         # Coverage is scoped to main.py (the app logic) via
         # [tool.coverage.run] source in pyproject.toml; run.py is the
         # PyInstaller/uvicorn entrypoint and is exercised by the
         # build-macos/build-windows smoke tests instead. The 90% floor
         # (see [tool.coverage.report] fail_under) sits a few points below
         # the ~98% currently achieved, leaving headroom before this needs
-        # revisiting.
-        run: pytest --ignore=tests/selenium --cov=main --cov-report=term-missing
+        # revisiting. tests/selenium isn't part of this combine, for the
+        # same reason it was excluded from the coverage run before this
+        # workflow was split into per-type jobs.
+        run: coverage report --show-missing
 
   security:
     name: Security (Bandit + pip-audit)
@@ -95,7 +232,17 @@ jobs:
 
   build-macos:
     name: Build macOS
-    needs: [lint, typecheck, test, security]
+    needs:
+      [
+        lint,
+        typecheck,
+        test-unit,
+        test-integration,
+        test-functional,
+        selenium-gate,
+        coverage,
+        security,
+      ]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -149,7 +296,17 @@ jobs:
 
   build-windows:
     name: Build Windows
-    needs: [lint, typecheck, test, security]
+    needs:
+      [
+        lint,
+        typecheck,
+        test-unit,
+        test-integration,
+        test-functional,
+        selenium-gate,
+        coverage,
+        security,
+      ]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
