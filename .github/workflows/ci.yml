@@ -324,10 +324,17 @@ jobs:
             -H "Authorization: Bearer $TOKEN" \
             -d '{"name": "Smoke Test", "salary": 5000, "age": 30, "position": "Mid QA", "on_leave": false}'
           curl -sf http://127.0.0.1:8000/api/employees -H "Authorization: Bearer $TOKEN" | grep -q "Smoke Test"
+            - name: Package macOS app correctly
+          run: |
+            chmod 755 dist/run.app/Contents/MacOS/run
+            codesign --force --deep --sign - dist/run.app
+            codesign --verify --deep --strict --verbose=2 dist/run.app
+            ditto -c -k --sequesterRsrc --keepParent dist/run.app dist/macos-app.zip
+
       - uses: actions/upload-artifact@v4
         with:
           name: macos-app
-          path: dist/run.app
+          path: dist/macos-app.zip
 
   build-linux:
     name: Build Linux
